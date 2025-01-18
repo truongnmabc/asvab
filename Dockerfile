@@ -1,4 +1,4 @@
-FROM node:18.20.0
+FROM node:20.2.0
 USER root
 
 RUN mkdir -p /app
