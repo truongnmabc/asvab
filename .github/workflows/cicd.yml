@@ -51,23 +51,16 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Preset Image Name
-              run: |
-                  echo "IMAGE_NAME_DH=${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
-                  echo "IMAGE_NAME_GHCR=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
-                  echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+              run: echo "IMAGE_URL=$(echo ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:$(echo ${{ github.sha }} | cut -c1-7) | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
             - name: Build and push Docker Image
               uses: docker/build-push-action@v5
               with:
-                  context: .
-                  file: ./Dockerfile
-                  push: true
-                  tags: |
-                      ${{ env.IMAGE_NAME_DH }}:${{ env.IMAGE_TAG }}
-                      ${{ env.IMAGE_NAME_DH }}:latest
-                      ${{ env.IMAGE_NAME_GHCR }}:${{ env.IMAGE_TAG }}
-                      ${{ env.IMAGE_NAME_GHCR }}:latest
-
+                    context: .
+                    file: ./Dockerfile
+                    push: true
+                    tags: ${{ env.IMAGE_URL }}
+           
             - name: Deploy Image to CapRover
               uses: caprover/deploy-from-github@v1.1.2
               with:
