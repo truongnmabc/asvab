@@ -1,1 +1,2 @@
-# npm run lint
+yarn run lint
+yarn run test:unit
