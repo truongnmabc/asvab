@@ -52,22 +52,34 @@ jobs:
 
             - name: Preset Image Name
               run: |
-                  echo "IMAGE_NAME_DH=${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
-                  echo "IMAGE_NAME_GHCR=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
-                  echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
-
-            - name: Build and push Docker Image
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ./Dockerfile
-                  push: true
-                  tags: |
-                      ${{ env.IMAGE_NAME_DH }}:${{ env.IMAGE_TAG }}
-                      ${{ env.IMAGE_NAME_DH }}:latest
-                      ${{ env.IMAGE_NAME_GHCR }}:${{ env.IMAGE_TAG }}
-                      ${{ env.IMAGE_NAME_GHCR }}:latest
-
+                  IMAGE_NAME_DH="${{ secrets.DOCKERHUB_USERNAME }}/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')"
+                  IMAGE_NAME_GHCR="ghcr.io/$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')"
+                  IMAGE_TAG="$(echo ${{ github.sha }} | cut -c1-7)"
+            
+                  echo "IMAGE_NAME_DH=$IMAGE_NAME_DH" >> $GITHUB_ENV
+                  echo "IMAGE_NAME_GHCR=$IMAGE_NAME_GHCR" >> $GITHUB_ENV
+                  echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+            
+                  echo "DockerHub Image Name: $IMAGE_NAME_DH"
+                  echo "GHCR Image Name: $IMAGE_NAME_GHCR"
+                  echo "Tag: $IMAGE_TAG"
+            - name: Debug Image Names
+                run: |
+                  echo "IMAGE_NAME_DH=${{ env.IMAGE_NAME_DH }}"
+                  echo "IMAGE_NAME_GHCR=${{ env.IMAGE_NAME_GHCR }}"
+                  echo "IMAGE_TAG=${{ env.IMAGE_TAG }}"
+          - name: Build and push Docker Image
+  uses: docker/build-push-action@v5
+  with:
+      context: .
+      file: ./Dockerfile
+      push: true
+      tags: |
+          ${{ env.IMAGE_NAME_DH }}:${{ env.IMAGE_TAG }}
+          ${{ env.IMAGE_NAME_DH }}:latest
+          ${{ env.IMAGE_NAME_GHCR }}:${{ env.IMAGE_TAG }}
+          ${{ env.IMAGE_NAME_GHCR }}:latest
+           
             - name: Deploy Image to CapRover
               uses: caprover/deploy-from-github@v1.1.2
               with:
