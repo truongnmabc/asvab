@@ -1,7 +1,6 @@
 "use client";
 
 import { IAppInfo } from "@/models/app/appInfo";
-import { revertPathName } from "@/utils/pathName";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import ListState from "./listState";
@@ -30,11 +29,11 @@ const BtnGotoState = ({ appInfo }: { appInfo: IAppInfo }) => {
                 className="bg-[#212121f5] py-3 px-8 font-semibold text-2xl text-white capitalize text-center rounded-md cursor-pointer "
                 onClick={() => {
                     if (currentState) {
-                        const _href = revertPathName({
-                            state: currentState,
-                            appName: appInfo.appShortName,
-                        });
-                        router.push(_href);
+                        // const _href = revertPathName({
+                        //     state: currentState,
+                        //     appName: appInfo.appShortName,
+                        // });
+                        router.push("");
                     } else {
                         setOpenListState(true);
                     }

@@ -5,7 +5,6 @@ import MyContainer from "@/components/container";
 import statesData from "@/data/statesName.json";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { IAppInfo } from "@/models/app/appInfo";
-import { revertPathName } from "@/utils/pathName";
 import { Collapse, Dialog } from "@mui/material";
 import { useRouter } from "next/navigation";
 import "./ListState.scss";
@@ -38,11 +37,11 @@ const ListState = ({
 
     const handleNavigateState = (state: string) => {
         localStorage.setItem("select-state-" + appInfo.appNameId, state);
-        const _href = revertPathName({
-            state: state,
-            appName: appInfo.appShortName,
-        });
-        router.push(_href);
+        // const _href = revertPathName({
+        //     state: state,
+        //     appName: appInfo.appShortName,
+        // });
+        router.push("");
     };
     return isMobile ? (
         <Dialog open={openListState} onClose={onClose}>
