@@ -5,4 +5,7 @@ describe("Next Question", () => {
     it("Test", () => {
         expect(1).toBe(1);
     });
+    it("Test 2", () => {
+        expect(1).toBe(1);
+    });
 });
