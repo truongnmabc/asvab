@@ -52,6 +52,9 @@ jobs:
             - name: Checkout source code
               uses: actions/checkout@v4
 
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
             - name: Download build artifacts
               uses: actions/download-artifact@v3
               with:
@@ -64,9 +67,14 @@ jobs:
             - name: Install caprover-cli
               run: yarn add -g caprover
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+            # 🔹 Đăng nhập vào Docker Hub
+            - name: Login to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+            # 🔹 Đăng nhập vào GitHub Container Registry (GHCR)
             - name: Login to Container Registry
               uses: docker/login-action@v3
               with:
@@ -74,21 +82,31 @@ jobs:
                   username: ${{ github.repository_owner }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
+            # 🔹 Tạo tên image cho Docker Hub & GHCR
             - name: Preset Image Name
-              run: echo "IMAGE_URL=$(echo ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:$(echo ${{ github.sha }} | cut -c1-7) | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+              run: |
+                  echo "IMAGE_NAME_DH=${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
+                  echo "IMAGE_NAME_GHCR=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}" >> $GITHUB_ENV
+                  echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
+            # 🔹 Build và Push Docker Image lên Docker Hub & GHCR
             - name: Build and push Docker Image
               uses: docker/build-push-action@v5
               with:
                   context: .
                   file: ./Dockerfile
                   push: true
-                  tags: ${{ env.IMAGE_URL }}
+                  tags: |
+                      ${{ env.IMAGE_NAME_DH }}:${{ env.IMAGE_TAG }}
+                      ${{ env.IMAGE_NAME_DH }}:latest
+                      ${{ env.IMAGE_NAME_GHCR }}:${{ env.IMAGE_TAG }}
+                      ${{ env.IMAGE_NAME_GHCR }}:latest
 
+            # 🔹 Deploy Image to CapRover
             - name: Deploy Image to CapRover
               uses: caprover/deploy-from-github@v1.1.2
               with:
                   server: "${{ secrets.CAPROVER_SERVER }}"
                   app: "${{ secrets.APP_NAME }}"
                   token: "${{ secrets.CAPROVER_API_TOKEN }}"
-                  image: ${{ env.IMAGE_URL }}
+                  image: ${{ env.IMAGE_NAME_DH }}:${{ env.IMAGE_TAG }}
