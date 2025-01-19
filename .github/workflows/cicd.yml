@@ -29,7 +29,15 @@ jobs:
 
             - name: Install dependencies
               run: yarn install --frozen-lockfile
-
+            - name: Debug environment
+              run: echo "App environment is $APP_ENV"
+              env:
+                AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+                DEV_BASE_API: ${{ secrets.DEV_BASE_API }}
+                NEXT_PUBLIC_APP_SHORT_NAME: ${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}
+                NEXT_PUBLIC_GOOGLE_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}
+                NEXT_PUBLIC_GOOGLE_SECRET: ${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}
+                
             - name: Build the project
               run: yarn build
 
