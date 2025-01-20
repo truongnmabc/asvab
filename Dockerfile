@@ -1,23 +1,23 @@
+# Stage 1: Chạy ứng dụng, không build lại
 FROM node:22.11.0 AS runner
 
+USER root
+
+RUN mkdir -p /app
 WORKDIR /app
 
-# Sao chép dependencies
+# Copy package.json và yarn.lock để tận dụng Docker cache
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production
 
-RUN yarn build
+# Cài đặt dependencies nhưng KHÔNG chạy build
+RUN yarn install --frozen-lockfile
 
-RUN yarn test:unit
-
-
-# # Sao chép thư mục build từ môi trường host
-# COPY --chown=node:node .next ./.next
-# COPY --chown=node:node public ./public
-# COPY --chown=node:node .env ./.env 
-# # Nếu có file .env
-# COPY --chown=node:node next.config.js ./next.config.js 
-# # Nếu có file này
+# Copy build từ GitHub Actions vào Docker image
+COPY .next ./.next
+COPY public ./public
+COPY next.config.js ./next.config.js
+COPY node_modules ./node_modules
 
 EXPOSE 3000
+
 CMD ["yarn", "start"]
