@@ -10,8 +10,6 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
 COPY .next ./.next
-COPY public ./public
-
 
 EXPOSE 3000
 
