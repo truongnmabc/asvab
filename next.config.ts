@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 // import withBundleAnalyzer from "@next/bundle-analyzer";
 // import withPlugins from "next-compose-plugins";
-
+import path from "path";
 const nextConfig: NextConfig = {
     reactStrictMode: false,
     eslint: {
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
         },
         optimizePackageImports: ["@mui/icons-material", "@mui/material"],
     },
-    webpack: (config: unknown) => {
+    webpack: (config) => {
         // config.module.rules.push({
         //     test: /\.(sa|sc|c)ss$/,
         //     use: [
@@ -65,23 +65,23 @@ const nextConfig: NextConfig = {
         //         "sass-loader",
         //     ],
         // });
+        config.resolve.alias["@"] = path.resolve(__dirname, "src");
         return config;
     },
 
     async rewrites() {
         const isSingleApp = process.env["NEXT_PUBLIC_APP_SHORT_NAME"];
         if (isSingleApp) {
-
-        const pageStatic = ["about-us", "contact", "getPro", "billing"];
-        const pageDynamic1 = [
-            "review",
-            "result_test",
-            "finish",
-            "final_test",
-            "diagnostic_test",
-            "custom_test",
-        ];
-        const pageDynamic = ["study"];
+            const pageStatic = ["about-us", "contact", "getPro", "billing"];
+            const pageDynamic1 = [
+                "review",
+                "result_test",
+                "finish",
+                "final_test",
+                "diagnostic_test",
+                "custom_test",
+            ];
+            const pageDynamic = ["study"];
 
             const result = [
                 {
