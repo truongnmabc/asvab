@@ -37,7 +37,7 @@ jobs:
             - name: Copy build artifacts
               run: |
                   mkdir -p build_output
-                  cp -r .next public next.config.js build_output/
+                  cp -r .next public build_output/
 
             - name: Upload build artifacts
               uses: actions/upload-artifact@v3
