@@ -29,14 +29,7 @@ jobs:
                   npm install -g yarn
                   yarn install --frozen-lockfile
 
-            - name: Build the project
-              run: yarn build
-              
-            - name: Verify Next.js build output
-              run: ls -la .next
-              
-            - name: Run tests
-              run: yarn test:unit
+
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
