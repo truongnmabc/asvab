@@ -1,47 +1,37 @@
-# # Sử dụng Node.js phiên bản 20.2.0
-FROM node:22.11.0
+# Sử dụng Node.js phiên bản mới nhất (hoặc cố định theo yêu cầu)
+FROM node:20.2.0 AS builder
 
-# # Thiết lập người dùng là root để tránh vấn đề quyền
-USER root
-
-# # Tạo thư mục ứng dụng và đặt làm thư mục làm việc
-RUN mkdir -p /app
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# # Copy toàn bộ mã nguồn vào container
+# Copy package.json và yarn.lock để tận dụng Docker cache
+COPY package.json yarn.lock ./
+
+# Cài đặt Yarn
+RUN yarn install --frozen-lockfile
+
+# Copy toàn bộ mã nguồn vào container
 COPY . .
 
-# # Cài đặt Yarn (nếu chưa có)
-# # RUN npm install -g yarn
+# Build ứng dụng Next.js
+RUN yarn build
 
-# # Cài đặt dependencies bằng Yarn
-# # RUN npm install 
-# # --frozen-lockfile
-# # Kiểm tra file trong thư mục (debug)
-# RUN ls -a
+# ===========================
+# Stage 2: Chạy ứng dụng
+# ===========================
+FROM node:20.2.0 AS runner
 
-# # Mở cổng 4050
-# EXPOSE 4050
+WORKDIR /app
 
-# # Lệnh chạy ứng dụng
-# CMD ["yarn", "start", "-p", "4050"]
+# Copy file build từ `builder` sang `runner`
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/package.json ./package.json
 
-
-
-# Copy package.json and package-lock.json (if available)
-COPY package*.json ./
-
-
-# Copy the built application files
-
-COPY ./.next ./.next
-COPY ./next.config.js ./next.config.js
-COPY ./public ./public
-COPY ./.next/static ./_next/static
-COPY ./node_modules ./node_modules
-# Expose the desired port (e.g., 3000)
-
+# Expose cổng cho Next.js (thường là 3000)
 EXPOSE 3000
 
-# Start the Node.js server
-CMD ["npm", "run", "start"]
+# Chạy ứng dụng Next.js
+CMD ["yarn", "start"]
