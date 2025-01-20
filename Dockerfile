@@ -12,12 +12,6 @@ RUN yarn install --frozen-lockfile
 COPY .next ./.next
 COPY public ./public
 
-COPY node_modules ./node_modules
-
-
-
-
-
 
 EXPOSE 3000
 
