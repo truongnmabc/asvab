@@ -186,6 +186,7 @@ const ModalSettingCustomTest: React.FC<IProps> = ({
                     subject: selectListTopic?.map((item) => item.id),
                     status: 0,
                     turn: 1,
+                    elapsedTime: 0,
                 });
 
                 dispatch(

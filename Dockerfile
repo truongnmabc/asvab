@@ -1,15 +1,18 @@
-FROM node:18.20.0
-USER root
+FROM node:22.11.0 AS runner
 
-RUN mkdir -p /app
 WORKDIR /app
 
-COPY . /app/web
-WORKDIR /app/web
-COPY temp-next .next
-COPY temp-env .env
-RUN yarn install
+# Sao chép dependencies
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --production
 
-RUN ls -a
-EXPOSE 4050
-CMD ["yarn", "start", "-p" , "4050"]
+# Sao chép thư mục build từ môi trường host
+COPY --chown=node:node .next ./.next
+COPY --chown=node:node public ./public
+COPY --chown=node:node .env ./.env 
+# Nếu có file .env
+COPY --chown=node:node next.config.js ./next.config.js 
+# Nếu có file này
+
+EXPOSE 3000
+CMD ["yarn", "start"]
