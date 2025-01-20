@@ -1,24 +1,20 @@
-# Sử dụng Node.js phiên bản mới nhất (hoặc cố định theo yêu cầu)
-FROM node:22.11.0 AS builder
+FROM node:22.11.0 AS runner
 
-# Thiết lập thư mục làm việc
+USER root
+
+RUN mkdir -p /app
 WORKDIR /app
 
-# Copy package.json và yarn.lock để tận dụng Docker cache
 COPY package.json yarn.lock ./
 
-# Cài đặt Yarn
 RUN yarn install --frozen-lockfile
 
-# Copy toàn bộ mã nguồn vào container
-COPY . .
+COPY .next ./.next
+COPY public ./public
+COPY next.config.js ./next.config.js
 
-# Build ứng dụng Next.js
-RUN yarn build
+COPY node_modules ./node_modules
 
-
-# Expose cổng cho Next.js (thường là 3000)
 EXPOSE 3000
 
-# Chạy ứng dụng Next.js
 CMD ["yarn", "start"]
