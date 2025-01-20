@@ -1,42 +1,23 @@
-# Sử dụng node 22.11.0 làm base image
-FROM node:22.11.0 AS builder
-
-WORKDIR /app
-
-# Sao chép và cài đặt dependencies
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
-
-# Sao chép toàn bộ source code vào container
-COPY . .
-
-# Build Next.js
-RUN yarn build
-
-# Chạy unit tests (tùy chọn)
-RUN yarn test:unit
-
-
-# Tạo một lightweight image cho runtime
+# Stage 1: Chạy ứng dụng, không build lại
 FROM node:22.11.0 AS runner
 
+USER root
+
+RUN mkdir -p /app
 WORKDIR /app
 
-# Sao chép dependencies từ builder (chỉ copy dependencies production để giảm dung lượng image)
+# Copy package.json và yarn.lock để tận dụng Docker cache
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production
 
-# Sao chép build output từ builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./next.config.js
+# Cài đặt dependencies nhưng KHÔNG chạy build
+RUN yarn install --frozen-lockfile
 
-# Tạo file .env bên trong container
-RUN echo 'DEV_BASE_API="http://localhost:3000/"' >> .env 
+# Copy build từ GitHub Actions vào Docker image
+COPY .next ./.next
+COPY public ./public
+COPY next.config.js ./next.config.js
+COPY node_modules ./node_modules
 
-
-# Expose port 3000 để chạy ứng dụng
 EXPOSE 3000
 
-# Start ứng dụng
 CMD ["yarn", "start"]

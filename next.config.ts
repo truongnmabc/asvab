@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 // import withBundleAnalyzer from "@next/bundle-analyzer";
 // import withPlugins from "next-compose-plugins";
-import path from "path";
+
 const nextConfig: NextConfig = {
     reactStrictMode: false,
     eslint: {
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
         },
         optimizePackageImports: ["@mui/icons-material", "@mui/material"],
     },
-    webpack: (config) => {
+    webpack: (config: unknown) => {
         // config.module.rules.push({
         //     test: /\.(sa|sc|c)ss$/,
         //     use: [
@@ -65,7 +65,6 @@ const nextConfig: NextConfig = {
         //         "sass-loader",
         //     ],
         // });
-        config.resolve.alias["@"] = path.resolve(__dirname, "src");
         return config;
     },
 
