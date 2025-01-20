@@ -15,7 +15,6 @@ RUN yarn install --frozen-lockfile
 # Copy build từ GitHub Actions vào Docker image
 COPY .next ./.next
 COPY public ./public
-COPY next.config.js ./next.config.js
 COPY node_modules ./node_modules
 
 EXPOSE 3000
