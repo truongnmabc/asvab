@@ -16,19 +16,6 @@ COPY . .
 # Build ứng dụng Next.js
 RUN yarn build
 
-# ===========================
-# Stage 2: Chạy ứng dụng
-# ===========================
-
-
-WORKDIR /app
-
-# Copy file build từ `builder` sang `runner`
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/next.config.js ./next.config.js
-
 
 # Expose cổng cho Next.js (thường là 3000)
 EXPOSE 3000
