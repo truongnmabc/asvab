@@ -4,7 +4,6 @@ describe("Next Question", () => {
     });
 
     it("Learn 1", () => {
-
         expect(1).toBe(1);
     });
 });

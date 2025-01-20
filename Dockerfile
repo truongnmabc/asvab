@@ -12,11 +12,11 @@ WORKDIR /app
 COPY . .
 
 # Cài đặt Yarn (nếu chưa có)
-RUN npm install -g yarn
+# RUN npm install -g yarn
 
 # Cài đặt dependencies bằng Yarn
-RUN yarn install --frozen-lockfile
-
+RUN npm install 
+# --frozen-lockfile
 # Kiểm tra file trong thư mục (debug)
 RUN ls -a
 
