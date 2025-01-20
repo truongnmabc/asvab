@@ -15,7 +15,7 @@ COPY . .
 # RUN npm install -g yarn
 
 # Cài đặt dependencies bằng Yarn
-RUN npm install 
+# RUN npm install 
 # --frozen-lockfile
 # Kiểm tra file trong thư mục (debug)
 RUN ls -a
