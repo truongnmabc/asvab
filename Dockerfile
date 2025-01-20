@@ -1,5 +1,5 @@
 # Sử dụng Node.js phiên bản mới nhất (hoặc cố định theo yêu cầu)
-FROM node:20.2.0 AS builder
+FROM node:22.11.0 AS builder
 
 # Thiết lập thư mục làm việc
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN yarn build
 # ===========================
 # Stage 2: Chạy ứng dụng
 # ===========================
-FROM node:20.2.0 AS runner
+
 
 WORKDIR /app
 
