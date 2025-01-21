@@ -1,22 +1,19 @@
-# Stage 1: Chạy ứng dụng, không build lại
-FROM node:22.11.0 AS runner
+# Use the official Node.js 22 image as the base image
+FROM node:22-alpine
 
-USER root
-
-RUN mkdir -p /app
+# Set the working directory
 WORKDIR /app
 
-# Copy package.json và yarn.lock để tận dụng Docker cache
-COPY package.json yarn.lock ./
+# Copy the build output from the GitHub Actions workflow
+COPY build_output/.next ./.next
+COPY build_output/public ./public
+COPY package*.json ./
 
-# Cài đặt dependencies nhưng KHÔNG chạy build
-RUN yarn install --frozen-lockfile
+# Install only production dependencies
+RUN npm install --only=production
 
-# Copy build từ GitHub Actions vào Docker image
-COPY .next ./.next
-COPY public ./public
-
-
+# Expose the port the app runs on
 EXPOSE 3000
 
-CMD ["yarn", "start"]
+# Start the Next.js application
+CMD ["npm", "start"]
