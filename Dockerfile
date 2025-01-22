@@ -5,11 +5,11 @@ FROM node:22-alpine
 WORKDIR /app
 
 # ✅ Copy build đã tạo từ GitHub Actions vào container
-COPY build_output/.next ./.next
-COPY build_output/public ./public
+COPY .next ./.next
+COPY public ./public
 COPY package.json yarn.lock ./
 
-# ✅ Chỉ cài đặt dependencies cần thiết cho runtime (bỏ qua devDependencies)
+# ✅ Cài đặt chỉ dependencies cần thiết cho runtime (bỏ qua devDependencies)
 RUN yarn install --production --frozen-lockfile
 
 # ✅ Thiết lập biến môi trường để chạy ở production mode
