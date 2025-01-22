@@ -10,7 +10,7 @@ COPY build_output/public ./public
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm install --only=production
+RUN yarn install --frozen-lockfile
 
 # Expose the port the app runs on
 EXPOSE 3000
