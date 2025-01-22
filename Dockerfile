@@ -1,15 +1,19 @@
-FROM node:18.20.0
-USER root
+# Use the official Node.js 22 image as the base image
+FROM node:22-alpine
 
-RUN mkdir -p /app
+# Set the working directory
 WORKDIR /app
 
-COPY . /app/web
-WORKDIR /app/web
-COPY temp-next .next
-COPY temp-env .env
-RUN yarn install
+# Copy the build output from the GitHub Actions workflow
+COPY build_output/.next ./.next
+COPY build_output/public ./public
+COPY package*.json ./
 
-RUN ls -a
-EXPOSE 4050
-CMD ["yarn", "start", "-p" , "4050"]
+# Install only production dependencies
+RUN npm install --only=production
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Start the Next.js application
+CMD ["npm", "start"]
