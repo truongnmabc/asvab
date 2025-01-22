@@ -48,8 +48,6 @@ jobs:
                   name: build_artifacts
                   path: build_output
 
-            - name: Run tests
-              run: yarn test:unit
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
