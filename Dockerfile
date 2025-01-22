@@ -13,7 +13,7 @@ COPY package*.json ./
 RUN yarn install --frozen-lockfile
 
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 4050
 
 # Start the Next.js application
 CMD ["npm", "start"]
