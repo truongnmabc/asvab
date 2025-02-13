@@ -9,12 +9,6 @@ COPY .next ./.next
 COPY public ./public
 COPY package.json yarn.lock ./
 
-# ✅ Copy file .env từ build args
-ARG ENV_CONTENT
-RUN echo "$ENV_CONTENT" > .env
-
-
-
 
 # ✅ Cài đặt chỉ dependencies cần thiết cho runtime (bỏ qua devDependencies)
 RUN yarn install --production --frozen-lockfile
