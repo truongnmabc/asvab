@@ -10,7 +10,6 @@ WORKDIR /app/web
 COPY .next .next
 COPY public public
 COPY package.json yarn.lock ./
-COPY .env .env 
  # Nếu cần copy file env vào container
 
 # ✅ Cài đặt chỉ dependencies cần thiết cho runtime (bỏ qua devDependencies)
