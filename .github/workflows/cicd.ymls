@@ -25,6 +25,15 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: "yarn"
+            - name: Create .env file
+              run: |
+                echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
+                echo "DEV_BASE_API=${{ secrets.DEV_BASE_API }}" >> .env
+                echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+                echo "NEXT_PUBLIC_APP_SHORT_NAME=${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}" >> .env
+                echo "NEXT_PUBLIC_GOOGLE_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}" >> .env
+                echo "NEXT_PUBLIC_GOOGLE_SECRET=${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}" >> .env
+
 
             - name: Install dependencies
               run: |
