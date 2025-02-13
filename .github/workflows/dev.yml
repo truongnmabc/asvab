@@ -32,35 +32,13 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      # ✅ 4️⃣ Kiểm tra và tạo file `.env`
-      - name: Check and create .env file
-        run: |
-          echo "🔍 Checking environment variables..."
-          [[ -z "${{ secrets.AUTH_SECRET }}" ]] && echo "⚠️ AUTH_SECRET is missing!" || echo "✅ AUTH_SECRET exists!"
-          [[ -z "${{ secrets.DEV_BASE_API }}" ]] && echo "⚠️ DEV_BASE_API is missing!" || echo "✅ DEV_BASE_API exists!"
-          [[ -z "${{ secrets.NEXT_PUBLIC_API_URL }}" ]] && echo "⚠️ NEXT_PUBLIC_API_URL is missing!" || echo "✅ NEXT_PUBLIC_API_URL exists!"
-          
-          echo "🔨 Creating .env file..."
-          cat <<EOF > .env
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-          DEV_BASE_API=${{ secrets.DEV_BASE_API }}
-          NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_APP_SHORT_NAME=${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}
-          NEXT_PUBLIC_GOOGLE_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}
-          NEXT_PUBLIC_GOOGLE_SECRET=${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}
-          EOF
 
-      # ✅ 5️⃣ Kiểm tra lại nội dung `.env`
-      - name: Debug .env file (only keys, no values)
-        run: grep -o '^[^=]*' .env
 
+  
       # ✅ 6️⃣ Build dự án
       - name: Build the project
         run: yarn build
 
-      # ✅ 7️⃣ Debug kiểm tra thư mục build
-      - name: Debug .next directory
-        run: ls -la .next || echo ".next does not exist"
 
       # ✅ 8️⃣ Định nghĩa image name
       - name: Set Docker Image Name
@@ -101,9 +79,6 @@ jobs:
           build-args: |
               ENV_CONTENT=${{ secrets.ENV_CONTENT }}
 
-      # ✅ 1️⃣2️⃣ Kiểm tra `.env` trong container
-      - name: Debug .env inside Docker
-        run: docker run --rm ${{ env.IMAGE_URL }} cat /app/.env || echo ".env file not found in container!"
 
       # ✅ 1️⃣3️⃣ Deploy lên CapRover
       - name: Deploy Image to CapRover
