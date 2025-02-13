@@ -31,7 +31,15 @@ jobs:
       # ✅ 3️⃣ Cài đặt dependencies (sử dụng cache)
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
+      - name: Create .env file
+        run: |
+          echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
+          echo "DEV_BASE_API=${{ secrets.DEV_BASE_API }}" >> .env
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+          echo "NEXT_PUBLIC_APP_SHORT_NAME=${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}" >> .env
+          echo "NEXT_PUBLIC_GOOGLE_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}" >> .env
+          echo "NEXT_PUBLIC_GOOGLE_SECRET=${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}" >> .env  
+          
       # ✅ 4️⃣ Build dự án
       - name: Build the project
         run: yarn build
@@ -76,6 +84,8 @@ jobs:
           tags: ${{ env.IMAGE_URL }},${{ env.IMAGE_URL_LATEST }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+              ENV_CONTENT=${{ secrets.ENV_CONTENT }}
 
       # ✅ 🔟 Deploy lên CapRover
       - name: Deploy Image to CapRover
