@@ -14,6 +14,9 @@ ARG ENV_CONTENT
 RUN echo "$ENV_CONTENT" > .env
 
 
+#log env
+RUN echo "ENV_CONTENT: $ENV_CONTENT"
+
 # ✅ Cài đặt chỉ dependencies cần thiết cho runtime (bỏ qua devDependencies)
 RUN yarn install --production --frozen-lockfile
 
