@@ -19,8 +19,8 @@ const appendEnv = (appInfo, isSingle) => {
     if (isSingle) appendToEnvFile("APP_ID", appInfo.appId);
     appendToEnvFile("NEXT_PUBLIC_APPLE_ID", "com.abc.asvabtestweb");
     appendToEnvFile("DEV_BASE_API", "http://localhost:3000/");
-    appendToEnvFile("NEXT_PUBLIC_SECRET_KEY", "https://api.cdl-prep.com/");
-    appendToEnvFile("NEXT_PUBLIC_WORDPRESS_API_URL", "ABCElearning2022");
+    appendToEnvFile("NEXT_PUBLIC_SECRET_KEY", "ABCElearning2022");
+    appendToEnvFile("NEXT_PUBLIC_WORDPRESS_API_URL", "https://api.cdl-prep.com/");
     appendToEnvFile(
         "NEXT_PUBLIC_GOOGLE_ID",
         "792314426707-gp1p1ml492uqehflmnm96r6in0jait6n.apps.googleusercontent.com"
