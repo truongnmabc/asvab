@@ -1,39 +1,39 @@
 "use client";
 
-import { ICurrentGame } from "@/models/game/game";
-import { ITestQuestion } from "@/models/tests/testQuestions";
+import { db } from "@/db/db.model";
+import { IGameMode, ITestBase } from "@/models/tests";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import {
-    getLocalUserProgress,
-    mapQuestionsWithProgress,
-} from "../initData/initPracticeTest";
+import { getLocalUserProgress } from "../initData/initPracticeTest";
+import { IQuestionOpt } from "@/models/question";
 
-interface IProps extends ITestQuestion {
+interface IProps extends ITestBase {
     indexSubTopic: number;
 }
 const choiceStartCustomTestThunk = createAsyncThunk(
     "startCustomTest",
     async ({ item }: { item: IProps }) => {
-        const listQuestion = item?.question;
+        const listIds = item?.groupExamData.flatMap((item) => item.questionIds);
         const progressData = await getLocalUserProgress(
-            item.parentId,
-            "test",
-            item.attemptNumber + 1
+            listIds,
+            "customTets",
+            item.attemptNumber
         );
+
+        const questions =
+            (await db?.questions.where("id").anyOf(listIds).toArray()) ||
+            ([] as IQuestionOpt[]);
+
         if (progressData) {
-            const questions = mapQuestionsWithProgress(
-                listQuestion as ICurrentGame[],
-                progressData
-            );
             return {
                 questions,
                 progressData,
-                currentTopicId: item.parentId,
-                gameMode: "test" as const,
+                currentTopicId: item.id,
+                gameMode: "practiceTests" as IGameMode,
                 totalDuration: item.totalDuration,
-                isGamePaused: item?.isGamePaused || false,
+                isGamePaused: false,
                 remainingTime: item?.remainingTime || item.totalDuration * 60,
                 currentSubTopicIndex: item.indexSubTopic,
+                gameDifficultyLevel: item.gameDifficultyLevel,
             };
         }
         return undefined;

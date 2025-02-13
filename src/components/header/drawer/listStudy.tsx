@@ -1,8 +1,10 @@
 "use client";
-import { handleGetNextPart } from "@/components/home/gridTopic/item/titleTopic";
+import { handleGetNextPart } from "@/utils/handleNavigateStudy";
+import RouterApp from "@/constants/router.constant";
 import { db } from "@/db/db.model";
-import { ITopic } from "@/models/topics/topics";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import { selectAppInfo } from "@/redux/features/appInfo.reselect";
+import { setIndexSubTopic } from "@/redux/features/game";
 import { selectSubTopics, selectTopics } from "@/redux/features/study";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import initQuestionThunk from "@/redux/repository/game/initData/initLearningQuestion";
@@ -12,6 +14,7 @@ import { ExpandMore } from "@mui/icons-material";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 const ListStudyDrawer = ({
     setOpenMenuDrawer,
@@ -21,7 +24,7 @@ const ListStudyDrawer = ({
     const appInfo = useAppSelector(selectAppInfo);
     const [isExpand, setIsExpand] = useState(false);
 
-    const [list, setList] = useState<ITopic[]>([]);
+    const [list, setList] = useState<ITopicBase[]>([]);
     const dispatch = useAppDispatch();
     const router = useRouter();
 
@@ -35,7 +38,7 @@ const ListStudyDrawer = ({
     }, [handleGetDataTopic]);
 
     const handleClick = useCallback(
-        async (topic: ITopic) => {
+        async (topic: ITopicBase) => {
             trackingEventGa4({
                 eventName: "click_topic",
                 value: {
@@ -43,21 +46,32 @@ const ListStudyDrawer = ({
                     to: topic.tag,
                 },
             });
-            const { tag, subTopicTag, partId, subTopicId } =
+            const { partId, subTopicId, allCompleted, currentIndex, turn } =
                 await handleGetNextPart({
-                    parentId: topic.id,
+                    topic,
                 });
-            const _href = `/study/${topic.tag}-practice-test?type=learn&subTopic=${subTopicTag}&tag=${tag}`;
+            if (!partId) {
+                toast.error("Error: Không tìm thấy partId hợp lệ");
+                return;
+            }
+            if (allCompleted) {
+                router.push(
+                    `${RouterApp.Finish}?partId=${partId}&subTopicId=${subTopicId}&topic=${topic.tag}`
+                );
+                return;
+            }
+            const _href = `/study/${topic.tag}-practice-test?type=learn&partId=${partId}`;
+
             dispatch(selectTopics(topic.id));
             if (subTopicId) dispatch(selectSubTopics(subTopicId));
+            dispatch(setIndexSubTopic(currentIndex + 1));
 
-            if (tag && subTopicTag) {
+            if (partId) {
                 dispatch(
                     initQuestionThunk({
-                        partTag: tag,
-                        subTopicTag,
                         partId,
                         subTopicId,
+                        attemptNumber: turn,
                     })
                 );
             }

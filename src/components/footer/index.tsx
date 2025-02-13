@@ -134,8 +134,16 @@ const FooterLandingV4 = () => {
         );
     };
 
-    if (pathname?.includes("test") || pathname?.includes("study")) {
-        return <div className="w-full h-32 "></div>;
+    if (
+        pathname?.includes("practiceTests") ||
+        pathname?.includes("study") ||
+        pathname?.includes("final_test") ||
+        pathname?.includes("review") ||
+        pathname?.includes("result_test") ||
+        pathname?.includes("diagnostic_test") ||
+        pathname?.includes("custom_test")
+    ) {
+        return <div className="w-full flex-1 min-h-20 "></div>;
     }
 
     return (
@@ -259,17 +267,18 @@ const FooterLandingV4 = () => {
             </div>
             <div className="v4-footer-landing-container-1">
                 <div className="footer-social max-w-component-desktop">
-                    <span>
-                        ©2024 {appInfo.appName} Prep by ABC-Elearning. All
-                        rights reserved.
-                    </span>
+                    <WrapperFooter appName={appInfo.appName} />
                     <PlatformContactsLogo appInfo={appInfo} />
                 </div>
             </div>
         </div>
     );
 };
-
+const WrapperFooter = ({ appName }: { appName: string }) => {
+    return (
+        <span>©2024 {appName} Prep by ABC-Elearning. All rights reserved.</span>
+    );
+};
 const PlatformContactsLogo = ({ appInfo }: { appInfo: IAppInfo }) => {
     const { facebook, twitter, youtube } = getContactApp(appInfo.appShortName);
     const { appConfig } = useAppSelector(appConfigState);

@@ -3,52 +3,20 @@ import VariableSizeList from "@/components/infinite";
 import QuestionResult from "@/components/questionReview";
 import { db } from "@/db/db.model";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { IUserQuestionProgress } from "@/models/progress/userQuestionProgress";
+import { IQuestionOpt } from "@/models/question";
 import { setListQuestionGames } from "@/redux/features/game";
 import { useAppDispatch } from "@/redux/hooks";
-import { MathJaxContext } from "better-react-mathjax";
+import clsx from "clsx";
 import React, { useCallback, useEffect } from "react";
 
 const WeakQuestions = () => {
-    const [listTopic, setListTopic] = React.useState<IUserQuestionProgress[]>(
-        []
-    );
+    const [listTopic, setListTopic] = React.useState<IQuestionOpt[]>([]);
     const dispatch = useAppDispatch();
     const handleGetData = useCallback(async () => {
-        const [data, topics] = await Promise.all([
-            db?.userProgress.toArray(),
-            db?.topics.toArray(),
-        ]);
+        const progress = await db?.userProgress.toArray();
 
-        if (data?.length && topics?.length) {
-            const listSub = topics
-                ?.flatMap((mainTopic) =>
-                    mainTopic.topics?.flatMap((subTopic) =>
-                        subTopic.topics?.map((topic) => ({
-                            ...topic,
-                            mainIcon: mainTopic.icon,
-                            mainTag: mainTopic.tag,
-                        }))
-                    )
-                )
-                .filter(Boolean);
-
-            const list = data
-                .filter((item) =>
-                    listSub?.some((topic) => item.parentIds.includes(topic?.id))
-                )
-                .map((item) => {
-                    const matchingTopic = listSub.find((topic) =>
-                        item.parentIds.includes(topic?.id)
-                    );
-                    return {
-                        ...item,
-                        icon: matchingTopic?.mainIcon,
-                        tag: matchingTopic?.mainTag,
-                    };
-                });
-
-            const incorrect = list.filter((item) => {
+        if (progress?.length) {
+            const incorrect = progress.filter((item) => {
                 const lastThreeAnswers = item.selectedAnswers?.slice(-3) || [];
 
                 const totalAnswers = lastThreeAnswers.length;
@@ -61,15 +29,14 @@ const WeakQuestions = () => {
 
                 return incorrectPercentage >= 50;
             });
-            console.log("🚀 ~ handleGetData ~ incorrect:", incorrect);
 
-            const mathType = incorrect.map((item) => ({
-                ...item,
-                parentId: -1,
-            }));
+            const ids = incorrect.map((item) => item.id);
 
-            setListTopic(mathType);
-            dispatch(setListQuestionGames(mathType));
+            const questions =
+                (await db?.questions.where("id").anyOf(ids).toArray()) || [];
+
+            setListTopic(questions);
+            dispatch(setListQuestionGames(questions));
         }
     }, [dispatch]);
 
@@ -82,22 +49,25 @@ const WeakQuestions = () => {
         listTopic[index]?.image ? (isMobile ? 460 : 400) : isMobile ? 420 : 330;
 
     return (
-        <div className="flex-1 h-full w-full">
+        <div
+            className={clsx({
+                "min-h-[400px]": listTopic.length <= 1,
+                "min-h-[820px]": listTopic.length > 1,
+            })}
+        >
             {listTopic?.length > 0 ? (
-                <MathJaxContext>
-                    <VariableSizeList
-                        data={listTopic}
-                        getItemSize={getItemSize}
-                        item={(item) => (
-                            <QuestionResult
-                                item={{
-                                    ...item,
-                                    parentId: -1,
-                                }}
-                            />
-                        )}
-                    />
-                </MathJaxContext>
+                <VariableSizeList
+                    data={listTopic}
+                    getItemSize={getItemSize}
+                    item={(item) => (
+                        <QuestionResult
+                            item={{
+                                ...item,
+                                parentId: -1,
+                            }}
+                        />
+                    )}
+                />
             ) : (
                 <Empty />
             )}

@@ -1,6 +1,6 @@
 import { db } from "@/db/db.model";
 import { ICurrentGame } from "@/models/game/game";
-import { IAnswer } from "@/models/question/questions";
+import { IAnswer } from "@/models/question";
 import { RootState } from "@/redux/store";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
@@ -11,51 +11,38 @@ const choiceAnswer = createAsyncThunk(
         thunkAPI
     ) => {
         const state = thunkAPI.getState() as RootState;
-        const {
-            gameMode,
-            attemptNumber,
-            currentQuestionIndex,
-            currentTopicId,
-        } = state.gameReducer;
+        const { attemptNumber, currentTopicId, gameMode } = state.gameReducer;
 
-        const parentId =
-            gameMode === "learn" ? question.parentId : currentTopicId;
         const isEx = await db?.userProgress.get(question.id);
-
-        const updatedParentIds = isEx?.parentIds
-            ? [...new Set([...isEx.parentIds, parentId])]
-            : [parentId];
 
         const updatedSelectedAnswers = isEx
             ? [
                   ...(isEx?.selectedAnswers || []),
                   {
-                      ...choice,
                       turn: attemptNumber,
-                      parentId,
+                      parentId: currentTopicId,
+                      id: choice.id,
+                      index: choice.index,
+                      correct: choice.correct,
+                      type: gameMode,
                   },
               ]
             : [
                   {
-                      ...choice,
-                      turn: 1,
-                      parentId,
+                      turn: attemptNumber,
+                      parentId: currentTopicId,
+                      id: choice.id,
+                      correct: choice.correct,
+                      index: choice.index,
+                      type: gameMode,
                   },
               ];
 
         const data = {
-            parentIds: updatedParentIds,
             selectedAnswers: updatedSelectedAnswers,
-            answers: question.answers,
-            gameMode,
-            text: question.text,
-            syncStatus: question.syncStatus,
-            status: 1,
             id: question.id,
-            level: question.level,
-            explanation: question.explanation,
-            index: currentQuestionIndex,
-            image: "",
+            parentId: question.partId,
+            level: question.level === -1 ? 50 : question.level,
         };
 
         if (isEx) {
@@ -70,8 +57,6 @@ const choiceAnswer = createAsyncThunk(
         };
     }
 );
-
-export default choiceAnswer;
 
 export const processChoiceAnswer = (
     state: RootState["gameReducer"],
@@ -123,3 +108,5 @@ export const processChoiceAnswer = (
         };
     }
 };
+
+export default choiceAnswer;

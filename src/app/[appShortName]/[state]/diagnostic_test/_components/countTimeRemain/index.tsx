@@ -2,6 +2,8 @@ import CountTime from "@/components/countTime";
 import {
     selectCurrentGame,
     selectCurrentQuestionIndex,
+    selectCurrentTopicId,
+    selectIsGamePaused,
     selectListQuestion,
     selectRemainingTime,
 } from "@/redux/features/game.reselect";
@@ -11,6 +13,7 @@ import finishDiagnosticThunk from "@/redux/repository/game/finish/finishDiagnost
 import RouterApp from "@/constants/router.constant";
 import { useRouter } from "next/navigation";
 import React, { useCallback } from "react";
+import { TypeParam } from "@/constants";
 
 const CountTimeDiagnostic = () => {
     const dispatch = useAppDispatch();
@@ -20,11 +23,15 @@ const CountTimeDiagnostic = () => {
     const indexCurrentQuestion = useAppSelector(selectCurrentQuestionIndex);
     const listLength = listQuestion?.length || 0;
     const router = useRouter();
+    const isPause = useAppSelector(selectIsGamePaused);
+    const idTopics = useAppSelector(selectCurrentTopicId);
 
     const handleEndTime = useCallback(() => {
         if (indexCurrentQuestion + 1 === listLength) {
             dispatch(finishDiagnosticThunk());
             router.replace(RouterApp.ResultTest, { scroll: true });
+            const _href = `${RouterApp.ResultTest}?type=${TypeParam.diagnosticTest}&testId=${idTopics}`;
+            router.replace(_href);
         } else {
             if (!currentGame.selectedAnswer) {
                 dispatch(
@@ -37,16 +44,27 @@ const CountTimeDiagnostic = () => {
                             index: -1,
                             text: "",
                             turn: 1,
+                            type: "diagnosticTest",
+                            parentId: -1,
                         },
                     })
                 );
             }
         }
-    }, [indexCurrentQuestion, listLength, dispatch, currentGame, router]);
+    }, [
+        indexCurrentQuestion,
+        listLength,
+        dispatch,
+        currentGame,
+        router,
+        idTopics,
+    ]);
+
+    const pause = isPause || (currentGame?.selectedAnswer ? true : false);
 
     return (
         <CountTime
-            isPause={currentGame?.selectedAnswer ? true : false}
+            isPause={pause}
             key={currentGame?.id}
             duration={remainTime}
             onEndTime={handleEndTime}

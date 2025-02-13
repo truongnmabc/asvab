@@ -1,42 +1,30 @@
 "use client";
-import { ICurrentGame } from "@/models/game/game";
-import { MathJaxContext } from "better-react-mathjax";
-import React, { Fragment } from "react";
-import FilterIcon from "./filterAnswers";
-import { AntTab, AntTabs } from "@/components/tabs";
-import TabPanelReview from "@/app/[appShortName]/[state]/result_test/_components/tabPanelReview";
 import { ITopicEndTest } from "@/app/[appShortName]/[state]/result_test/_components";
+import { ITableData } from "@/app/[appShortName]/[state]/result_test/_components/resultContext";
+import TabPanelReview from "@/app/[appShortName]/[state]/result_test/_components/tabPanelReview";
+import { AntTab, AntTabs } from "@/components/tabs";
+import React, { Fragment } from "react";
 import Empty from "../empty";
+import FilterIcon from "./filterAnswers";
 
 type IProps = {
-    all: ICurrentGame[];
-    correct: ICurrentGame[];
-    incorrect: ICurrentGame[];
+    tableData: ITableData;
     showFilter?: boolean;
-    result?: {
-        listTopic: ITopicEndTest[];
-        all: ICurrentGame[];
-        correct: ICurrentGame[];
-        incorrect: ICurrentGame[];
-    };
-    setTabletData?: (e: {
-        all: ICurrentGame[];
-        correct: ICurrentGame[];
-        incorrect: ICurrentGame[];
-    }) => void;
+    listTopic: ITopicEndTest[];
+    correctIds: number[];
+    setTabletData: (e: ITableData) => void;
     title?: string;
     type?: "default" | "custom";
 };
 
 const ReviewAnswerResult: React.FC<IProps> = ({
-    all,
-    correct,
-    incorrect,
+    tableData,
     setTabletData,
-    result,
+    listTopic,
     showFilter = true,
     title,
     type,
+    correctIds,
 }) => {
     const [value, setValue] = React.useState(0);
 
@@ -57,7 +45,7 @@ const ReviewAnswerResult: React.FC<IProps> = ({
                         label={
                             <LabelReviewAnswerResult
                                 title="All"
-                                count={all.length}
+                                count={tableData.all.length}
                             />
                         }
                     />
@@ -65,7 +53,7 @@ const ReviewAnswerResult: React.FC<IProps> = ({
                         label={
                             <LabelReviewAnswerResult
                                 title="Correct"
-                                count={correct.length}
+                                count={tableData.correct.length}
                             />
                         }
                     />
@@ -73,37 +61,40 @@ const ReviewAnswerResult: React.FC<IProps> = ({
                         label={
                             <LabelReviewAnswerResult
                                 title="Incorrect"
-                                count={incorrect.length}
+                                count={tableData.incorrect.length}
                             />
                         }
                     />
                 </AntTabs>
                 {showFilter && (
-                    <FilterIcon setTabletData={setTabletData} result={result} />
+                    <FilterIcon
+                        tableData={tableData}
+                        setTabletData={setTabletData}
+                        listTopic={listTopic}
+                        correctIds={correctIds}
+                    />
                 )}
             </div>
-            {all?.length > 0 ? (
+            {tableData.all?.length > 0 ? (
                 <div className="w-full flex-1 h-full transition-all">
-                    <MathJaxContext>
-                        <TabPanelReview
-                            value={value}
-                            index={0}
-                            data={all}
-                            type={type}
-                        />
-                        <TabPanelReview
-                            value={value}
-                            index={1}
-                            data={correct}
-                            type={type}
-                        />
-                        <TabPanelReview
-                            value={value}
-                            index={2}
-                            type={type}
-                            data={incorrect}
-                        />
-                    </MathJaxContext>
+                    <TabPanelReview
+                        value={value}
+                        index={0}
+                        data={tableData.all}
+                        type={type}
+                    />
+                    <TabPanelReview
+                        value={value}
+                        index={1}
+                        data={tableData.correct}
+                        type={type}
+                    />
+                    <TabPanelReview
+                        value={value}
+                        index={2}
+                        type={type}
+                        data={tableData.incorrect}
+                    />
                 </div>
             ) : (
                 <Empty />

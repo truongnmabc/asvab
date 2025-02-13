@@ -1,9 +1,9 @@
 "use client";
-import LazyLoadImage from "@/components/images";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { IAppInfo } from "@/models/app/appInfo";
+import { IGameMode } from "@/models/tests";
 import { ITestInfo } from "@/models/tests/tests";
-import { ITopicResState } from "@/models/topics/topics";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import { useRouter } from "next/navigation";
 import React, { Fragment } from "react";
 // import { trackingEventGa4 } from "@/services/googleEvent";
@@ -15,9 +15,9 @@ const CardItem = ({
     _state,
     appInfo,
 }: {
-    topic: ITopicResState;
+    topic: ITopicBase;
     test?: ITestInfo;
-    type: "test" | "learn";
+    type: IGameMode;
     _state: string;
     appInfo: IAppInfo;
 }) => {
@@ -99,7 +99,7 @@ const CardItem = ({
 
             // router.push(topic.slug);
         }
-        if (type === "test") {
+        if (type === "practiceTests") {
             // trackingEventGa4()
             // ga.event({
             //     action: "click_full_test",
@@ -116,10 +116,10 @@ const CardItem = ({
     return (
         <div className=" w-full bg-white overflow-hidden flex gap-4  border-none outline-none p-0 sm:p-6 relative  rounded-2xl ">
             <div className="lg:w-[196px] sm:w-16  sm:h-16 rounded-lg lg:h-[196px] hidden sm:block">
-                <LazyLoadImage
+                {/* <LazyLoadImage
                     src={(type === "learn" ? topic?.img : test?.img) || ""}
                     classNames="rounded-2xl sm:w-[196px] sm:h-[196px]"
-                />
+                /> */}
             </div>
             <div
                 className="flex-1 z-10  flex rounded-2xl sm:rounded-none border-none outline-none  p-4 sm:p-0 justify-between gap-4 sm:gap-0 flex-col"
@@ -170,11 +170,11 @@ const CardItem = ({
             </div>
             {isMobile && (
                 <div className="absolute border outline-none overflow-hidden top-0 bottom-0 left-0 right-0 z-0">
-                    <LazyLoadImage
+                    {/* <LazyLoadImage
                         src={(type == "learn" ? topic.img : test?.img) || ""}
                         classNames="rounded-2xl "
                         imgClassNames="object-fill w-full"
-                    />
+                    /> */}
                 </div>
             )}
         </div>

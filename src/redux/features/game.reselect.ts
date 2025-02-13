@@ -85,3 +85,13 @@ export const selectIsDataLoaded = createSelector(
     [gameState],
     (reducer) => reducer.isDataLoaded
 );
+
+export const selectHasRetakenDiagnosticTest = createSelector(
+    [gameState],
+    (reducer) => reducer.hasRetakenDiagnosticTest
+);
+
+export const selectShouldLoading = createSelector(
+    [gameState],
+    (reducer) => reducer.shouldLoading
+);

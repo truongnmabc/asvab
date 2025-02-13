@@ -1,11 +1,9 @@
 "use client";
-import Config from "@/config";
 import { selectCurrentSubTopicIndex } from "@/redux/features/game.reselect";
 import { useAppSelector } from "@/redux/hooks";
-import { setSession } from "@/utils/session";
 import clsx from "clsx";
-import { useParams, usePathname } from "next/navigation";
-import React from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import React, { useMemo, useRef } from "react";
 
 export const getKeyTest = (
     pathname: string | string[] | undefined
@@ -33,27 +31,33 @@ export const getLastPathSegment = (pathname?: string | null): string | null => {
 };
 
 const TitleQuestion = ({ type }: { type?: string }) => {
-    const param = useParams();
+    const params = useParams();
     const pathname = usePathname();
-
-    const defaultTitle =
-        getKeyTest(param?.["slug"]) || getLastPathSegment(pathname);
-
+    const router = useRouter();
+    const defaultTitle = useMemo(
+        () => getKeyTest(params?.["slug"]) || getLastPathSegment(pathname),
+        [params, pathname]
+    );
     const index = useAppSelector(selectCurrentSubTopicIndex);
+    const tempCountRef = useRef(0);
 
-    let tempCount = 0;
+    const handleTesterMode = () => {
+        const isTester = sessionStorage.getItem("isTester");
 
-    const setIsTester = () => {
-        tempCount++;
-        if (tempCount == 0) {
-            setTimeout(() => {
-                tempCount = 0;
-            }, 5000);
-        }
-        if (tempCount >= 3) {
-            setSession(Config.TESTER_KEY, true);
-            alert("You are tester!");
-            location.reload();
+        if (isTester) {
+            sessionStorage.removeItem("isTester");
+            alert("By! Tester");
+            router.back();
+        } else {
+            tempCountRef.current++;
+            setTimeout(() => (tempCountRef.current = 0), 2000);
+
+            if (tempCountRef.current >= 3) {
+                alert("Hello! Tester");
+                sessionStorage.setItem("isTester", "true");
+                tempCountRef.current = 0;
+                router.back();
+            }
         }
     };
     return (
@@ -61,7 +65,7 @@ const TitleQuestion = ({ type }: { type?: string }) => {
             className={clsx(
                 "w-full text-center hidden sm:block capitalize text-xl font-semibold"
             )}
-            onClick={setIsTester}
+            onClick={handleTesterMode}
         >
             {defaultTitle} {type === "learn" ? `- Core ${index}` : ""}
         </div>

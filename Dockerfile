@@ -1,22 +1,15 @@
-# ✅ Sử dụng Alpine Linux để giảm dung lượng image
 FROM node:22-alpine
+USER root
 
-# ✅ Thiết lập thư mục làm việc
+RUN mkdir -p /app
 WORKDIR /app
 
-# ✅ Copy build đã tạo từ GitHub Actions vào container
-COPY .next ./.next
-COPY public ./public
-COPY package.json yarn.lock ./
-
-# ✅ Cài đặt chỉ dependencies cần thiết cho runtime (bỏ qua devDependencies)
+COPY . /app/web
+WORKDIR /app/web
+COPY temp-next .next
+COPY temp-env .env
 RUN yarn install --production --frozen-lockfile
 
-# ✅ Thiết lập biến môi trường để chạy ở production mode
-ENV NODE_ENV=production
-
-# ✅ Mở cổng 3000
-EXPOSE 3000
-
-# ✅ Khởi chạy ứng dụng Next.js
-CMD ["yarn", "start"]
+RUN ls -a
+EXPOSE 4050
+CMD ["yarn", "start", "-p" , "4050"]

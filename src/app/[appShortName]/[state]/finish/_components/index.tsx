@@ -1,152 +1,204 @@
 "use client";
 import MyContainer from "@/components/container";
 import { db } from "@/db/db.model";
-import { IAnswer } from "@/models/question/questions";
+import { IUserQuestionProgress } from "@/models/progress/userQuestionProgress";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import { selectAttemptNumber } from "@/redux/features/game.reselect";
 import { useAppSelector } from "@/redux/hooks";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import {
-    saveDataPassing,
-    totalPassingApp,
-    totalPassingPart,
-    totalQuestionApp,
-} from "./calculate";
+import React, { useCallback, useEffect, useState } from "react";
+import { totalPassingPart } from "./calculate";
 import GridTopicProgress from "./gridTopic";
 import PassingFinishPage from "./passing";
 import ProgressFinishPage from "./progress";
 import TitleFinishPage from "./title";
+import { IQuestionBase } from "@/models/question";
+
+const getCurrentProgressData = async ({
+    partId,
+    topicName,
+}: {
+    partId: string;
+    topicName: string;
+}) => {
+    const [progress, questions, currentTopic] = await Promise.all([
+        db?.userProgress.where("parentId").equals(Number(partId)).toArray(),
+        db?.questions.where("partId").equals(Number(partId)).toArray(),
+        db?.topics.where("slug").equals(topicName).first(),
+    ]);
+
+    return { progress, questions, currentTopic };
+};
+
+const calculateProgress = (
+    progress: IUserQuestionProgress[],
+    questions: IQuestionBase[],
+    turn: number
+) => {
+    const correctAnswers =
+        progress?.filter((item) => {
+            // Lấy lần đầu tiên người dùng trả lời câu hỏi trong lần làm bài (turn)
+            const firstAnswer = item.selectedAnswers.find(
+                (answer) => answer.turn === turn && answer.type === "learn"
+            );
+
+            // Nếu lần đầu tiên trả lời đúng, tính vào số câu đúng
+            return firstAnswer?.correct;
+        }).length || 0;
+
+    return {
+        correct: correctAnswers,
+        total: questions?.length || 1,
+    };
+};
+
+const findNextPart = async ({
+    currentTopic,
+    currentSubTopic,
+}: {
+    currentTopic: ITopicBase;
+    currentSubTopic?: ITopicBase;
+}) => {
+    if (!currentTopic || !currentSubTopic) return { nextPart: null, index: -1 };
+
+    // Tìm part chưa hoàn thành trong subtopic hiện tại
+    const nextPartIndex = currentSubTopic.topics.findIndex(
+        (p) => p.status === 0
+    );
+    if (nextPartIndex !== -1) {
+        return {
+            nextPart: currentSubTopic.topics[nextPartIndex],
+            index: nextPartIndex,
+        };
+    }
+
+    // Nếu tất cả part của subtopic đã hoàn thành, tìm subtopic khác chưa hoàn thành
+    const nextSubTopic = currentTopic.topics.find((sub) => sub.status === 0);
+    if (nextSubTopic) {
+        const nextPartIndex = nextSubTopic.topics.findIndex(
+            (p) => p.status === 0
+        );
+        if (nextPartIndex !== -1) {
+            return {
+                nextPart: nextSubTopic.topics[nextPartIndex],
+                index: nextPartIndex,
+            };
+        }
+    }
+
+    // Nếu tất cả subtopic đã hoàn thành, tìm topic tiếp theo trong danh sách topic
+    const nextTopic = await db?.topics
+        .filter((topic) => topic.status === 0)
+        .first();
+    if (nextTopic) {
+        const nextSubTopic = nextTopic.topics.find((sub) => sub.status === 0);
+        if (nextSubTopic) {
+            const nextPartIndex = nextSubTopic.topics.findIndex(
+                (p) => p.status === 0
+            );
+            if (nextPartIndex !== -1) {
+                return {
+                    nextPart: nextSubTopic.topics[nextPartIndex],
+                    index: nextPartIndex,
+                };
+            }
+        }
+    }
+
+    // Nếu không tìm thấy part nào, trả về null
+    return { nextPart: null, index: -1 };
+};
+
+const calculateProgressPassing = async ({
+    progress,
+    turn,
+}: {
+    progress: IUserQuestionProgress[];
+    turn: number;
+}) => {
+    const passingAppInfo = await db?.passingApp.get(-1);
+
+    const passingPart = await totalPassingPart({
+        progress,
+        averageLevel: passingAppInfo?.averageLevel || 50,
+        turn,
+    });
+
+    if (passingAppInfo) {
+        return {
+            extraPoint: (passingPart / passingAppInfo.totalQuestion) * 100,
+        };
+    }
+    return {
+        extraPoint: 0,
+    };
+};
 
 const FinishLayout = () => {
-    const subTopicProgressId = useSearchParams()?.get("subTopicProgressId");
+    const subTopicId = useSearchParams()?.get("subTopicId");
     const partId = useSearchParams()?.get("partId");
+    const topicName = useSearchParams()?.get("topic") || "";
     const turn = useAppSelector(selectAttemptNumber);
 
     const [game, setGame] = useState<{
-        currentPart: number;
-        listAnswer: IAnswer[];
-        currentPartTag: string;
-        passing: number;
-        nextPart: {
-            subTopicTag: string;
-            tag: string;
-        };
+        currentPart: ITopicBase | null;
+        nextPart: ITopicBase | null;
         currentTurn: number;
         extraPoint: number;
+        total: number;
+        correct: number;
+        currentTopicId: number;
+        indexSubTopic: number;
     }>({
-        currentPart: 0,
-        listAnswer: [],
-        currentPartTag: "",
-        nextPart: {
-            subTopicTag: "",
-            tag: "",
-        },
+        currentPart: null,
+        currentTopicId: 0,
+        nextPart: null,
         currentTurn: 0,
-        passing: 0,
         extraPoint: 0,
+        total: 1,
+        correct: 0,
+        indexSubTopic: 1,
     });
 
     const handleGetData = useCallback(async () => {
-        if (subTopicProgressId && turn && partId) {
-            const data = await db?.subTopicProgress
-                .where("id")
-                .equals(Number(subTopicProgressId))
-                .first();
+        if (!subTopicId || !partId || !turn) return;
 
-            const partIndex =
-                data?.part.findIndex((item) => item.status === 1) || 0;
+        const { currentTopic, progress, questions } =
+            await getCurrentProgressData({ partId, topicName });
 
-            const useProgress =
-                (await db?.userProgress
-                    .filter((item) => item.parentIds.includes(Number(partId)))
-                    .sortBy("index")) || [];
+        if (!currentTopic || !progress || !questions) return;
 
-            const passingDb = await db?.passing
-                .where("id")
-                .equals(Number(subTopicProgressId))
-                .first();
+        const { correct, total } = calculateProgress(progress, questions, turn);
 
-            const currentPassing = passingDb?.topics?.find(
-                (item) => item.id === Number(partId)
-            );
-            let passingApp = 0;
-            let extraPoint = 0;
-            if (passingDb && currentPassing) {
-                const totalPassing = await totalPassingPart(
-                    useProgress,
-                    currentPassing?.averageLevel
-                );
+        const currentSubTopic = currentTopic.topics.find(
+            (t) => t.id === Number(subTopicId)
+        );
 
-                const listPass = await db?.passing.toArray();
-                if (listPass) {
-                    const totalQuestion = totalQuestionApp(listPass);
-                    const totalQuestionTopic = listPass
-                        .filter((item) => item.parentId === passingDb.parentId)
-                        ?.reduce((acc, cur) => acc + cur.totalQuestion, 0);
+        const currentPart =
+            currentSubTopic?.topics.find((p) => p.id === Number(partId)) ||
+            null;
 
-                    extraPoint = totalPassing / totalQuestionTopic;
+        const { nextPart, index } = await findNextPart({
+            currentTopic,
+            currentSubTopic,
+        });
 
-                    const prev = await totalPassingApp(listPass);
+        const { extraPoint } = await calculateProgressPassing({
+            progress,
+            turn,
+        });
 
-                    passingApp = (prev + totalPassing) / (totalQuestion || 1);
-
-                    const listNew = passingDb.topics?.map((item) =>
-                        item.id === Number(partId)
-                            ? {
-                                  ...item,
-                                  passing: totalPassing,
-                              }
-                            : item
-                    );
-
-                    saveDataPassing({
-                        id: Number(subTopicProgressId),
-                        data: {
-                            ...passingDb,
-                            passing:
-                                listNew?.reduce(
-                                    (acc, cur) => acc + cur.passing,
-                                    0
-                                ) || 0,
-                            topics: listNew,
-                        },
-                    });
-                }
-            }
-
-            const maxTurn = useProgress.reduce((max, item) => {
-                const turns = item.selectedAnswers
-                    ?.map((s) => s.turn)
-                    .filter((item) => item !== undefined);
-                return Math.max(max, ...(turns || []));
-            }, 0);
-
-            const filteredAnswers = useProgress
-                .flatMap((item) =>
-                    item.selectedAnswers?.find((s) => s.turn === turn)
-                )
-                .filter((item): item is IAnswer => item !== undefined);
-
-            const nextPart = data?.part?.find((p) => p.status === 0);
-
-            if (filteredAnswers && filteredAnswers.length && data?.id) {
-                setGame({
-                    currentPart: partIndex + 1,
-                    listAnswer: filteredAnswers,
-                    nextPart: {
-                        subTopicTag: data.subTopicTag,
-                        tag: nextPart?.tag || "",
-                    },
-                    currentPartTag:
-                        data.part.find((item) => item.id === Number(partId))
-                            ?.tag || "",
-                    currentTurn: maxTurn,
-                    passing: passingApp,
-                    extraPoint,
-                });
-            }
-        }
-    }, [subTopicProgressId, partId, turn]);
+        setGame({
+            currentPart,
+            currentTopicId: currentTopic.id,
+            nextPart,
+            correct,
+            total,
+            currentTurn: currentPart?.turn || 1,
+            extraPoint,
+            indexSubTopic: index,
+        });
+    }, [subTopicId, partId, turn, topicName]);
 
     useEffect(() => {
         handleGetData();
@@ -156,18 +208,12 @@ const FinishLayout = () => {
         <MyContainer>
             <div className="w-full py-6 h-full gap-8 flex flex-col">
                 <TitleFinishPage />
-                <ProgressFinishPage listAnswer={game.listAnswer} />
-                <PassingFinishPage
-                    nextPart={game.nextPart}
-                    currentPartTag={game.currentPartTag}
-                    currentTurn={game.currentTurn}
-                    passing={game.passing}
-                    extraPoint={game.extraPoint}
-                />
+                <ProgressFinishPage correct={game.correct} total={game.total} />
+                <PassingFinishPage {...game} />
                 <GridTopicProgress />
             </div>
         </MyContainer>
     );
 };
 
-export default FinishLayout;
+export default React.memo(FinishLayout);

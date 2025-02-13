@@ -3,15 +3,13 @@ import { MtUiButton } from "@/components/button";
 import { continueGame, startOverGame } from "@/redux/features/game";
 import {
     selectCurrentTopicId,
-    selectGameMode,
     selectIsGamePaused,
 } from "@/redux/features/game.reselect";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import initDiagnosticTestQuestionThunk from "@/redux/repository/game/initData/initDiagnosticTest";
-import pauseTestThunk from "@/redux/repository/game/pauseAndResumed/pauseTest";
-import resumedTestThunk, {
-    updateTimeTest,
-} from "@/redux/repository/game/pauseAndResumed/resumedTest";
+import initTestQuestionThunk from "@/redux/repository/game/initData/initPracticeTest";
+import { updateTimeTest } from "@/redux/repository/game/pauseAndResumed/resumedTest";
+import { updateDbTestQuestions } from "@/utils/updateDb";
 import Dialog from "@mui/material/Dialog";
 import Slide from "@mui/material/Slide";
 import { TransitionProps } from "@mui/material/transitions";
@@ -30,36 +28,39 @@ const Transition = React.forwardRef(function Transition(
 const ModalConfirm = () => {
     const [open, setOpen] = React.useState(false);
     const pathname = usePathname();
-    const typeParam = useSearchParams()?.get("type");
+    const testId = useSearchParams()?.get("testId");
     const dispatch = useAppDispatch();
     const isPaused = useAppSelector(selectIsGamePaused);
     const idTopic = useAppSelector(selectCurrentTopicId);
-    const type = useAppSelector(selectGameMode);
 
     const handleStartOver = useCallback(async () => {
-        await dispatch(
-            resumedTestThunk({
-                type:
-                    typeParam === "test"
-                        ? "practiceTest"
-                        : pathname?.includes("custom_test")
-                        ? "customTest"
-                        : pathname?.includes("final_test")
-                        ? "finalTest"
-                        : "diagnosticTest",
-            })
-        );
+        if (testId)
+            await updateDbTestQuestions({
+                id: Number(testId),
+                data: {
+                    isGamePaused: false,
+                    elapsedTime: 0,
+                    status: 0,
+                },
+                isUpAttemptNumber: true,
+            });
         if (pathname?.includes("diagnostic_test")) {
             dispatch(initDiagnosticTestQuestionThunk());
         }
-
+        if (pathname?.includes("practice_test") && testId) {
+            dispatch(
+                initTestQuestionThunk({
+                    testId: Number(testId),
+                })
+            );
+        }
         dispatch(startOverGame());
         setOpen(false);
-    }, [typeParam, pathname, dispatch]);
+    }, [pathname, dispatch, testId]);
 
     const handleContinue = useCallback(() => {
-        dispatch(continueGame());
         dispatch(updateTimeTest());
+        dispatch(continueGame());
         setOpen(false);
     }, [dispatch]);
 
@@ -73,18 +74,6 @@ const ModalConfirm = () => {
             });
         };
     }, [setOpen]);
-
-    useEffect(() => {
-        return () => {
-            if (idTopic && idTopic !== -1 && type === "test") {
-                dispatch(
-                    pauseTestThunk({
-                        testId: idTopic,
-                    })
-                );
-            }
-        };
-    }, [idTopic, type, dispatch]);
 
     useEffect(() => {
         if (isPaused && idTopic) {

@@ -2,6 +2,7 @@
 import { resetState } from "@/redux/features/game";
 import { useAppDispatch } from "@/redux/hooks";
 import pauseTestThunk from "@/redux/repository/game/pauseAndResumed/pauseTest";
+// import pauseTestThunk from "@/redux/repository/game/pauseAndResumed/pauseTest";
 import beforeUnLoadThunk, {
     reloadStateThunk,
 } from "@/redux/repository/utils/reload";
@@ -27,8 +28,8 @@ const EventListener = () => {
     }, [handlePageReload]);
 
     const handleBeforeUnload = useCallback(() => {
-        dispatch(beforeUnLoadThunk());
         dispatch(pauseTestThunk({}));
+        dispatch(beforeUnLoadThunk());
     }, [dispatch]);
 
     useEffect(() => {
@@ -39,7 +40,8 @@ const EventListener = () => {
         };
     }, [handleBeforeUnload]);
 
-    const handleBackPage = useCallback(() => {
+    const handleBackPage = useCallback(async () => {
+        await dispatch(pauseTestThunk({}));
         dispatch(resetState());
     }, [dispatch]);
 

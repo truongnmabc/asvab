@@ -16,7 +16,7 @@ const DashboardCard = ({
 }) => {
     const isMobile = useIsMobile();
     return (
-        <div className="relative mx-auto min-w-[320px] w-full sm:w-fit h-[300px] sm:h-[340px] z-0 flex flex-col items-center">
+        <div className="relative mx-auto min-w-[320px]  w-full sm:w-fit h-[300px] sm:h-[340px] z-0 flex flex-col items-center">
             <CircleProgress
                 percentage={percent}
                 color="#12E1AF"
@@ -24,14 +24,14 @@ const DashboardCard = ({
                 bgColor="#F87171"
                 strokeWidth={16}
                 halfCircle
-                textClassName="text-5xl font-bold"
+                textClassName="text-7xl font-bold"
                 textAttributes={{
                     fill: "#F87171",
                 }}
             />
 
             <div className=" absolute  bottom-0 left-0 w-full z-20">
-                <div className="mt-4 flex justify-between w-full ">
+                <div className="mt-4 px-8 sm:px-0 flex justify-between w-full ">
                     <div className="flex  gap-2">
                         <div className="h-1 mt-3 rounded-md bg-[#15CB9F] w-3"></div>
                         <div>
@@ -66,13 +66,16 @@ const DashboardCard = ({
 
                     <div className="relative custom-progress w-full h-5 mt-1 z-10 bg-white rounded-full">
                         <div
-                            className="absolute w-1/2 top-0 left-0 h-5 bg-yellow-500 rounded"
+                            className="absolute w-1/2 top-0 left-0 h-5 bg-yellow-500 rounded-full"
                             style={{
                                 background:
                                     "linear-gradient(90deg, #E3C151 0%, #E3A651 50%, #F39153 100%)",
-                                width: `${passing < 3 ? 3 : passing}%`,
+                                width: `${passing < 3 ? 6 : passing}%`,
                             }}
                         ></div>
+                        <div className="absolute w-full h-5 leading-5 text-primary text-xs font-semibold text-center">
+                            + {passing.toFixed(2)}%
+                        </div>
                     </div>
                     <div className="absolute inset-0 pt-2 z-0">
                         <Pattern />

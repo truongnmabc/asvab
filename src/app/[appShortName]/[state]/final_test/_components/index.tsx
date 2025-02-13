@@ -9,7 +9,7 @@ import { Fragment } from "react";
 import LoadDataFinalTest from "./load";
 import MainViewFinalTest from "./mainView";
 
-const FinalTestLayout = ({ contentSeo }: { contentSeo: string }) => {
+const FinalTestLayout = ({ contentSeo }: { contentSeo?: string }) => {
     return (
         <Fragment>
             <Grid2 container>
@@ -45,7 +45,7 @@ const FinalTestLayout = ({ contentSeo }: { contentSeo: string }) => {
                             xs: 12,
                         }}
                     >
-                        <div className="w-full flex flex-1 flex-col gap-4 sm:gap-6  sm:p-0  h-full">
+                        <div className="w-full flex flex-1 flex-col gap-4 sm:gap-6 pb-12  sm:p-0  h-full">
                             <MainViewFinalTest />
                             <BannerDownloadApp />
                             {contentSeo && (
