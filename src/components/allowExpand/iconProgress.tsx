@@ -1,92 +1,57 @@
 "use client";
+import RouterApp from "@/constants/router.constant";
 import { db } from "@/db/db.model";
-import { IPartProgress } from "@/models/progress/subTopicProgress";
-import { ITopic } from "@/models/topics/topics";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import { setIndexSubTopic, setTurtGame } from "@/redux/features/game";
 import {
-    selectCurrentGame,
+    selectAttemptNumber,
     selectCurrentTopicId,
     selectListQuestion,
-    selectAttemptNumber,
 } from "@/redux/features/game.reselect";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import initQuestionThunk from "@/redux/repository/game/initData/initLearningQuestion";
 import clsx from "clsx";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { IconSubTopic } from "./iconTopic";
 import { AllowExpandContext, IContextAllowExpand } from "./provider";
+
 type IProps = {
-    part: ITopic;
+    part: ITopicBase;
     index: number;
-    subTopicTag: string;
-    isCurrentPlaying?: IPartProgress;
-    subTopic: ITopic;
     isPass: boolean;
+    readySubTopic?: ITopicBase;
 };
 
-const IconProgress = ({
-    part,
-    index,
-    subTopicTag,
-    isCurrentPlaying,
-    subTopic,
-    isPass,
-}: IProps) => {
-    const currentGame = useAppSelector(selectCurrentGame);
+const IconProgress = ({ part, index, isPass, readySubTopic }: IProps) => {
     const listQuestion = useAppSelector(selectListQuestion);
     const turn = useAppSelector(selectAttemptNumber);
-    const idTopic = useAppSelector(selectCurrentTopicId);
-
+    const partId = useAppSelector(selectCurrentTopicId);
     const { mainTopicTag } =
         useContext<IContextAllowExpand>(AllowExpandContext);
 
+    const isCurrentPlaying = readySubTopic?.id === part?.id;
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const pathname = usePathname();
-    const tag = useSearchParams()?.get("tag");
     const [progress, setProgress] = useState(0);
 
-    const handleListenerChange = useCallback(async () => {
-        const result =
-            (await db?.userProgress
-                .filter((item) => item.parentIds.includes(part.id))
-                .toArray()) || [];
-
-        const pass = result.filter((item) =>
-            item.selectedAnswers?.find(
-                (ans) => ans.turn === turn && ans.correct
-            )
-        );
-
-        setProgress(Math.floor((pass.length / listQuestion.length) * 100));
-    }, [part.id, listQuestion, turn]);
-
     const handleClick = useCallback(async () => {
-        if (
-            pathname?.includes(`/study/${mainTopicTag}-practice-test`) &&
-            tag === part.tag
-        ) {
-            return;
-        }
-
         dispatch(setIndexSubTopic(index));
 
         if (isPass) {
-            const _href = `/finish?subTopicProgressId=${subTopic.id}&topic=${mainTopicTag}-practice-test&partId=${part.id}`;
-            return router.push(_href);
+            router.push(
+                `${RouterApp.Finish}?subTopicId=${part.parentId}&topic=${mainTopicTag}-practice-test&partId=${part.id}`,
+                {
+                    scroll: true,
+                }
+            );
+            return;
         }
-        if (part.id === isCurrentPlaying?.id) {
-            // trackingEventGa4({
-
-            // })
-
-            const _href = `/study/${mainTopicTag}-practice-test?type=learn&subTopic=${subTopicTag}&tag=${part?.tag}`;
-
+        if (isCurrentPlaying || index === 1) {
             dispatch(
                 initQuestionThunk({
-                    partTag: part?.tag,
-                    subTopicTag,
+                    partId: part.id,
+                    subTopicId: part.parentId,
                 })
             );
             dispatch(
@@ -94,46 +59,37 @@ const IconProgress = ({
                     turn: 1,
                 })
             );
-            if (pathname?.includes("/study")) {
-                return router.replace(_href);
-            }
+            const _href = `/study/${mainTopicTag}-practice-test?type=learn&partId=${part?.id}&subTopicId=${part.parentId}`;
 
-            return router.push(_href);
+            router.push(_href);
         }
-    }, [
-        part,
-        isCurrentPlaying,
-        isPass,
-        dispatch,
-        mainTopicTag,
-        pathname,
-        router,
-        subTopic.id,
-        subTopicTag,
-        tag,
-        index,
-    ]);
+    }, [part, isPass, dispatch, mainTopicTag, router, index, isCurrentPlaying]);
 
     useEffect(() => {
-        if (
-            (!isPass || (isPass && idTopic === part.id)) &&
-            isCurrentPlaying &&
-            idTopic &&
-            part.id &&
-            idTopic === part.id
-        ) {
-            handleListenerChange();
-        }
-    }, [
-        isCurrentPlaying,
-        idTopic,
-        part.id,
-        listQuestion,
-        isPass,
-        handleListenerChange,
-        turn,
-    ]);
+        if (!listQuestion.length || part.id !== partId || !turn) return;
 
+        const fetchProgress = async () => {
+            const progressData = await db?.userProgress
+                .where("parentId")
+                .equals(part.id)
+                .filter((item) =>
+                    item.selectedAnswers.some(
+                        (ans) => ans.turn === turn && ans.correct
+                    )
+                )
+                .toArray();
+
+            if (progressData) {
+                setProgress(
+                    Math.floor(
+                        (progressData.length / listQuestion.length) * 100
+                    )
+                );
+            }
+        };
+
+        fetchProgress();
+    }, [part.id, partId, listQuestion, turn]);
     return (
         <div
             className={clsx(
@@ -147,15 +103,11 @@ const IconProgress = ({
             onClick={handleClick}
         >
             <IconSubTopic
-                lock={part.id !== isCurrentPlaying?.id}
-                activeAnim={currentGame.parentId === part?.id}
+                lock={!isCurrentPlaying && index !== 1}
+                activeAnim={partId === part?.id}
                 isFinishThisLevel={isPass}
                 currentLevelScore={
-                    isPass && currentGame.parentId !== part?.id
-                        ? progress
-                        : currentGame.parentId !== part?.id && isPass
-                        ? 100
-                        : progress
+                    partId === part?.id ? progress : isPass ? 100 : progress
                 }
             />
 

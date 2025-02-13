@@ -4,25 +4,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "yarn &&  next dev --turbopack -p 3001",
+    "dev": "yarn &&  next dev --turbopack ",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start",
     "lint": "next lint",
     "type": "tsc",
     "test": "yarn test:unit && yarn test:e2e",
     "test:unit": "jest --runInBand",
     "test:e2e": "playwright test",
     "prepare": "husky",
-    "setup": "node  scripts/setupProject.js"
+    "deploy": "node  scripts/build.js ",
+    "setup": "node  scripts/setupProject.js",
+    "cap": "node  scripts/caprover-deploy.js"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@mui/icons-material": "^6.1.9",
-    "@mui/material": "^6.1.8",
-    "@mui/material-nextjs": "^6.1.9",
+    "@hookform/resolvers": "^3.10.0",
+    "@mui/icons-material": "^6.4.3",
+    "@mui/material": "^6.4.3",
+    "@mui/material-nextjs": "^6.4.3",
     "@mui/styles": "^5.15.3",
-    "@next/third-parties": "^15.0.3",
+    "@next/third-parties": "^15.1.6",
     "@paypal/react-paypal-js": "^8.7.0",
     "@react-spring/web": "^9.7.5",
     "@reduxjs/toolkit": "^2.3.0",
@@ -44,6 +47,7 @@
     "react": "^19.0.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
     "react-lottie": "^1.2.10",
     "react-qr-code": "^2.0.15",
     "react-redux": "^9.1.2",
@@ -55,7 +59,8 @@
     "reselect": "^5.1.1",
     "resize-observer-polyfill": "^1.5.1",
     "throttle-debounce": "^5.0.2",
-    "uuid": "^11.0.5"
+    "uuid": "^11.0.5",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@clack/prompts": "^0.8.2",
@@ -100,6 +105,7 @@
     "postcss": "^8",
     "postcss-loader": "^8.1.1",
     "postcss-preset-env": "^10.1.2",
+    "redux": "^5.0.1",
     "redux-mock-store": "^1.5.5",
     "sass": "^1.83.0",
     "sass-loader": "^16.0.3",
@@ -108,7 +114,8 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "~5.6.2",
-    "typescript-eslint": "^8.13.0"
+    "typescript-eslint": "^8.13.0",
+    "webpack": "^5.97.1"
   },
   "resolutions": {
     "string-width": "^4.2.0"

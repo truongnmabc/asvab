@@ -1,79 +1,93 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { ITopic } from "@/models/topics/topics";
-import { db } from "@/db/db.model";
-import { MtUiButton } from "@/components/button";
-import { ICurrentGame } from "@/models/game/game";
 import CardTopic, {
     IconCheck,
 } from "@/app/[appShortName]/[state]/custom_test/_components/modalSetting/cardTopic";
 import { ITopicEndTest } from "@/app/[appShortName]/[state]/result_test/_components";
+import { ITableData } from "@/app/[appShortName]/[state]/result_test/_components/resultContext";
+import { MtUiButton } from "@/components/button";
 import DialogResponsive from "@/components/dialogResponsive";
+import { db } from "@/db/db.model";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import ctx from "@/utils/mergeClass";
+import React, { useCallback, useEffect, useState } from "react";
 type IProps = {
-    result?: {
-        listTopic: ITopicEndTest[];
-
-        all: ICurrentGame[];
-        correct: ICurrentGame[];
-        incorrect: ICurrentGame[];
-    };
-    setTabletData?: (e: {
-        all: ICurrentGame[];
-        correct: ICurrentGame[];
-        incorrect: ICurrentGame[];
-    }) => void;
+    listTopic: ITopicEndTest[];
+    correctIds: number[];
+    setTabletData: (e: ITableData) => void;
+    tableData: ITableData;
 };
-const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
+const FilterIcon: React.FC<IProps> = ({
+    setTabletData,
+    listTopic,
+    correctIds,
+    tableData,
+}) => {
     const [open, setOpen] = React.useState(false);
-    const [listTopic, setListTopic] = useState<ITopic[]>([]);
-    const [selectListTopic, setSelectListTopic] = useState<ITopic[]>([]);
+    const [topics, setTopics] = useState<ITopicBase[]>([]);
+    const [selectListTopic, setSelectListTopic] = useState<ITopicBase[]>([]);
+    const [tempSelectListTopic, setTempSelectListTopic] = useState<
+        ITopicBase[]
+    >([]);
 
-    const handleClose = useCallback(() => setOpen(false), []);
+    const handleClose = useCallback(() => {
+        // Khi đóng, reset lại temp về giá trị trước đó
+        setTempSelectListTopic(selectListTopic);
+        setOpen(false);
+    }, [selectListTopic]);
     const handleOpen = useCallback(() => setOpen(true), []);
 
     const handleSelectAll = useCallback(() => {
         if (
-            result?.listTopic.length &&
-            selectListTopic.length !== result?.listTopic.length
+            listTopic?.length &&
+            tempSelectListTopic.length !== listTopic.length
         )
-            setSelectListTopic?.(result?.listTopic);
-
-        if (selectListTopic.length === result?.listTopic.length)
-            setSelectListTopic?.([]);
-    }, [result?.listTopic, selectListTopic]);
+            setTempSelectListTopic(listTopic);
+        else setTempSelectListTopic([]);
+    }, [listTopic, tempSelectListTopic]);
 
     const handleApply = useCallback(() => {
-        if (!result?.all) return;
-        const newList = result?.all?.filter((item) =>
-            selectListTopic.some(
-                (selectedTopic) => item.parentId === selectedTopic.id
+        setSelectListTopic(tempSelectListTopic);
+
+        // Lọc danh sách câu hỏi thuộc các chủ đề đã chọn
+        const newList = tableData.defaultData?.filter((item) =>
+            tempSelectListTopic.some(
+                (selectedTopic) => item.topicId === selectedTopic.id
             )
         );
 
+        // Xác định danh sách câu hỏi đúng và sai
+        const correctList = newList.filter((item) =>
+            correctIds.includes(item.id)
+        );
+        const incorrectList = newList.filter(
+            (item) => !correctIds.includes(item.id)
+        );
+
+        // Cập nhật state
         setTabletData?.({
             all: newList,
-            correct: newList.filter((item) => item.selectedAnswer?.correct),
-            incorrect: newList.filter((item) => !item.selectedAnswer?.correct),
+            correct: correctList,
+            incorrect: incorrectList,
+            defaultData: tableData.defaultData,
         });
-
-        handleClose();
-    }, [selectListTopic, setTabletData, handleClose, result]);
+        setOpen(false);
+    }, [tempSelectListTopic, setTabletData, tableData, correctIds]);
 
     useEffect(() => {
         const handleGetData = async () => {
             const data = await db?.topics.toArray();
             if (data) {
-                setListTopic(data);
+                setTopics(data);
             }
         };
         handleGetData();
     }, []);
 
     useEffect(() => {
-        if (result && result.listTopic?.length > 0) {
-            setSelectListTopic(result.listTopic);
+        if (listTopic?.length > 0) {
+            setSelectListTopic(listTopic);
+            setTempSelectListTopic(listTopic);
         }
-    }, [result]);
+    }, [listTopic]);
 
     return (
         <div className=" rounded-lg px-2 sm:px-5 py-2 bg-[#5497FF1F]">
@@ -127,7 +141,10 @@ const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
                                     className="hidden sm:block underline cursor-pointer text-sm font-normal"
                                     onClick={handleSelectAll}
                                 >
-                                    Select All
+                                    {tempSelectListTopic.length ===
+                                    listTopic.length
+                                        ? "Deselect All"
+                                        : "Select All"}
                                 </span>
                             </div>
                             <div className="hidden sm:flex">
@@ -135,11 +152,7 @@ const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
                                     type="primary"
                                     size="large"
                                     onClick={handleApply}
-                                    disabled={
-                                        selectListTopic.length > 0
-                                            ? false
-                                            : true
-                                    }
+                                    disabled={tempSelectListTopic.length === 0}
                                 >
                                     Apply Filter
                                 </MtUiButton>
@@ -150,18 +163,20 @@ const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
                             onClick={handleSelectAll}
                         >
                             <span className=" underline cursor-pointer text-sm font-normal">
-                                Select All
+                                {tempSelectListTopic.length === listTopic.length
+                                    ? "Deselect All"
+                                    : "Select All"}
                             </span>
                             <div
                                 className={ctx(
                                     "w-5 h-5 rounded-md border border-solid flex items-center overflow-hidden  justify-center ",
                                     {
                                         "border-primary bg-primary ":
-                                            selectListTopic.length ===
-                                            result?.listTopic.length,
+                                            tempSelectListTopic.length ===
+                                            listTopic.length,
                                         "border-[#21212152] ":
-                                            selectListTopic.length !==
-                                            result?.listTopic.length,
+                                            tempSelectListTopic.length !==
+                                            listTopic.length,
                                     }
                                 )}
                             >
@@ -169,12 +184,12 @@ const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
                             </div>
                         </div>
                         <div className="grid mt-4 gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-                            {listTopic?.map((item) => (
+                            {topics?.map((item) => (
                                 <CardTopic
                                     item={item}
                                     key={item.id}
-                                    selectListTopic={selectListTopic}
-                                    setSelectListTopic={setSelectListTopic}
+                                    selectListTopic={tempSelectListTopic}
+                                    setSelectListTopic={setTempSelectListTopic}
                                 />
                             ))}
                         </div>
@@ -185,7 +200,7 @@ const FilterIcon: React.FC<IProps> = ({ setTabletData, result }) => {
                             size="large"
                             block
                             onClick={handleApply}
-                            disabled={selectListTopic.length > 0 ? false : true}
+                            disabled={tempSelectListTopic.length === 0}
                         >
                             Apply Filter
                         </MtUiButton>

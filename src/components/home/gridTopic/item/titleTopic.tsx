@@ -1,126 +1,19 @@
 "use client";
 import LazyLoadImage from "@/components/images";
 import MtUiRipple, { useRipple } from "@/components/ripple";
-import { db } from "@/db/db.model";
+import RouterApp from "@/constants/router.constant";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { IPartProgress } from "@/models/progress/subTopicProgress";
-import { ITopic } from "@/models/topics/topics";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import { selectAppInfo } from "@/redux/features/appInfo.reselect";
-import { setIndexSubTopic } from "@/redux/features/game";
-import { selectSubTopics, selectTopics } from "@/redux/features/study";
+import { selectTopics } from "@/redux/features/study";
 import { selectTopicsId } from "@/redux/features/study.reselect";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import initQuestionThunk from "@/redux/repository/game/initData/initLearningQuestion";
-import { AppDispatch } from "@/redux/store";
-import RouterApp from "@/constants/router.constant";
 import { trackingEventGa4 } from "@/services/googleEvent";
+import { handleNavigateStudy } from "@/utils/handleNavigateStudy";
 import ctx from "@/utils/mergeClass";
 import clsx from "clsx";
-import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { usePathname, useRouter } from "next/navigation";
 import Priority from "./priority";
-
-export const handleGetNextPart = async ({
-    parentId,
-    topic,
-}: {
-    parentId: number;
-    topic?: ITopic;
-}): Promise<{
-    tag?: string;
-    subTopicTag: string;
-    partId?: number;
-    subTopicId?: number;
-    index?: number;
-}> => {
-    const progress =
-        (await db?.subTopicProgress
-            .where("parentId")
-            .equals(parentId)
-            .toArray()) || [];
-
-    if (!progress.length && topic) {
-        const firstTopic = topic.topics?.[0];
-        const firstSubTopic = firstTopic?.topics?.[0];
-
-        const part = firstTopic?.topics?.map((item) => ({
-            id: item.id || -1,
-            parentId: item.parentId,
-            status: 0,
-            totalQuestion: item?.totalQuestion || 0,
-            tag: item.tag,
-            turn: 1,
-        })) as IPartProgress[];
-
-        await db?.subTopicProgress.add({
-            id: firstTopic?.id || 0,
-            parentId: topic.id,
-            part: part,
-            subTopicTag: firstTopic?.tag || "",
-            pass: false,
-        });
-
-        return {
-            tag: firstSubTopic?.tag || "",
-            subTopicTag: firstTopic?.tag || "",
-            partId: firstSubTopic?.id,
-            subTopicId: firstTopic?.id,
-            index: 0,
-        };
-    }
-
-    const incompleteProgress = progress.find(
-        (item) => !item.pass && item.part?.some((p) => p.status === 0)
-    );
-
-    const nextPart = incompleteProgress?.part?.find((p) => p.status === 0);
-
-    const index = incompleteProgress?.part?.findIndex((p) => p === nextPart);
-    return {
-        tag: nextPart?.tag,
-        subTopicTag: incompleteProgress?.subTopicTag || "",
-        subTopicId: incompleteProgress?.id,
-        index: index,
-    };
-};
-
-type IPropsHandleNavigateStudy = {
-    topic: ITopic;
-    dispatch: AppDispatch;
-    router: AppRouterInstance;
-    appShortName: string;
-    isReplace?: boolean;
-};
-export const handleNavigateStudy = async ({
-    topic,
-    dispatch,
-    router,
-    isReplace = false,
-}: IPropsHandleNavigateStudy) => {
-    const { tag, subTopicTag, partId, subTopicId, index } =
-        await handleGetNextPart({
-            parentId: topic.id,
-            topic,
-        });
-    const _href = `/study/${topic.tag}-practice-test?type=learn&subTopic=${subTopicTag}&tag=${tag}`;
-    dispatch(selectTopics(topic.id));
-
-    if (tag && subTopicTag) {
-        dispatch(
-            initQuestionThunk({
-                partTag: tag,
-                subTopicTag,
-                partId,
-                subTopicId,
-            })
-        );
-    }
-    if (subTopicId) dispatch(selectSubTopics(subTopicId));
-    dispatch(setIndexSubTopic((index || 0) + 1));
-
-    if (isReplace) return router.replace(_href);
-    router.push(_href);
-};
 
 const TitleTopic = ({
     topic,
@@ -128,7 +21,7 @@ const TitleTopic = ({
     classNames,
     imgClassNames,
 }: {
-    topic: ITopic;
+    topic: ITopicBase;
     priority: number;
     classNames: string;
     imgClassNames?: string;
@@ -154,7 +47,6 @@ const TitleTopic = ({
 
         if (!isMobile && currentPathname === RouterApp.Home) {
             return handleNavigateStudy({
-                appShortName: appInfo.appShortName,
                 dispatch,
                 router,
                 topic,

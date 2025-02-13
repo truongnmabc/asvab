@@ -1,30 +1,47 @@
 "use client";
-import ClockIcon from "@/components/icon/ClockIcon";
-import { MathJaxContext } from "better-react-mathjax";
-import { useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
-import CountTimeRemainPracticeTest from "./countTimeTest";
+import BottomActions from "@/components/bottomActions";
+import ChoicesPanel from "@/components/choicesPanel";
+import ExplanationDetail from "@/components/explanation";
 import ProgressQuestion from "@/components/progressQuestion";
 import QuestionContent from "@/components/question";
-import ExplanationDetail from "@/components/explanation";
-import ChoicesPanel from "@/components/choicesPanel";
-import BottomActions, { IPropsType } from "@/components/bottomActions";
-import TitleQuestion from "@/components/titleQuestion";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { selectCurrentTopicId } from "@/redux/features/game.reselect";
-import initLearnQuestionThunk from "@/redux/repository/game/initData/initLearningQuestion";
-import initPracticeThunk from "@/redux/repository/game/initData/initPracticeTest";
+import { useSearchParams } from "next/navigation";
+import React, { Fragment, useEffect } from "react";
+import LoadDataStudy from "../loadData";
+
+import { IGameMode } from "@/models/tests";
+import dynamic from "next/dynamic";
+import { useAppDispatch } from "@/redux/hooks";
+import pauseTestThunk from "@/redux/repository/game/pauseAndResumed/pauseTest";
+
+const TitleQuestion = dynamic(() => import("@/components/titleQuestion"), {
+    ssr: false,
+});
+
+const CountTimeRemainPracticeTest = dynamic(() => import("./countTimeTest"), {
+    ssr: false,
+});
+
+const ClockIcon = dynamic(() => import("@/components/icon/ClockIcon"), {
+    ssr: false,
+});
 
 const MainStudyView = () => {
-    const type = useSearchParams()?.get("type") as IPropsType;
+    const type = useSearchParams()?.get("type") as IGameMode;
+    const testId = useSearchParams()?.get("testId") as IGameMode;
+    const dispatch = useAppDispatch();
 
+    useEffect(() => {
+        return () => {
+            dispatch(pauseTestThunk({ testId: Number(testId) }));
+        };
+    }, [dispatch, testId]);
     return (
-        <MathJaxContext>
+        <Fragment>
             <div className=" sm:shadow-custom bg-transparent sm:bg-white  rounded-2xl dark:bg-black">
                 <div className="sm:p-4 flex flex-col gap-3">
                     {type && <TitleQuestion type={type} />}
                     <ProgressQuestion />
-                    {type === "test" && (
+                    {type === "practiceTests" && (
                         <div className="w-full flex items-center justify-center">
                             <div className="flex items-center justify-center w-fit gap-2">
                                 <ClockIcon />
@@ -39,32 +56,8 @@ const MainStudyView = () => {
 
                 <BottomActions type={type} />
             </div>
-            <LoadData />
-        </MathJaxContext>
+            <LoadDataStudy />
+        </Fragment>
     );
 };
 export default React.memo(MainStudyView);
-
-const LoadData = () => {
-    const dispatch = useAppDispatch();
-    const id = useAppSelector(selectCurrentTopicId);
-    const type = useSearchParams()?.get("type");
-    const tag = useSearchParams()?.get("tag");
-    const testId = useSearchParams()?.get("testId");
-    const subTopic = useSearchParams()?.get("subTopic");
-    useEffect(() => {
-        if ((!id || id === -1) && subTopic && tag && type === "learn") {
-            dispatch(
-                initLearnQuestionThunk({
-                    partTag: tag,
-                    subTopicTag: subTopic,
-                })
-            );
-        }
-
-        if ((!id || id === -1) && type === "test" && testId) {
-            dispatch(initPracticeThunk({ testId: Number(testId) }));
-        }
-    }, [id, dispatch, type, tag, subTopic, testId]);
-    return null;
-};

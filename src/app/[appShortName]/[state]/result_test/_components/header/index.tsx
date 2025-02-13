@@ -2,35 +2,29 @@
 import CloseIcon from "@/asset/icon/CloseIcon";
 import { MtUiButton } from "@/components/button";
 import MyContainer from "@/components/container";
-import { handleNavigateStudy } from "@/components/home/gridTopic/item/titleTopic";
 import { TypeParam } from "@/constants";
 import RouterApp from "@/constants/router.constant";
 import { db } from "@/db/db.model";
-import { selectAppInfo } from "@/redux/features/appInfo.reselect";
-import { selectCurrentTopicId } from "@/redux/features/game.reselect";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { handleNavigateStudy } from "@/utils/handleNavigateStudy";
+import { resetState, startTryAgainDiagnostic } from "@/redux/features/game";
+import { useAppDispatch } from "@/redux/hooks";
 import initCustomTestThunk from "@/redux/repository/game/initData/initCustomTest";
+import initDiagnosticTestQuestionThunk from "@/redux/repository/game/initData/initDiagnosticTest";
 import initFinalTestThunk from "@/redux/repository/game/initData/initFinalTest";
 import initPracticeThunk from "@/redux/repository/game/initData/initPracticeTest";
-import tryAgainDiagnosticThunk from "@/redux/repository/game/tryAgain/tryAgainDiagnostic";
-import tryAgainPracticesThunk from "@/redux/repository/game/tryAgain/tryAgainPractices";
+import { updateDbTestQuestions } from "@/utils/updateDb";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { IconFailResultTest } from "../icon/iconFailResultTest";
 import { IconPassResultTest } from "../icon/iconPassResultTest";
+import { useResultContext } from "../resultContext";
 import DashboardCard from "./chartHeader";
 import HeaderResultDiagnostic from "./headerResultDiagnostic";
 import { TitleMiss, TitlePass } from "./titleResultTest";
 
-const HeaderResultTest: React.FC<{
-    correct: number;
-    total: number;
-    isPass: boolean;
-    passing: number;
-}> = ({ correct, total, isPass, passing }) => {
+const HeaderResultTest = () => {
+    const { correct, total, isPass, passing } = useResultContext();
     const router = useRouter();
-    const idTopic = useAppSelector(selectCurrentTopicId);
-    const appInfo = useAppSelector(selectAppInfo);
     const type = useSearchParams()?.get("type");
     const dispatch = useAppDispatch();
     const testId = useSearchParams()?.get("testId");
@@ -62,10 +56,22 @@ const HeaderResultTest: React.FC<{
     const handleTryAgain = useCallback(async () => {
         let _href = "";
 
-        const id = idTopic !== -1 ? idTopic : Number(testId) || -1;
+        const id = Number(testId);
+
+        if (id)
+            await updateDbTestQuestions({
+                id: Number(id),
+                data: {
+                    isGamePaused: false,
+                    elapsedTime: 0,
+                    status: 0,
+                },
+                isUpAttemptNumber: true,
+            });
         switch (type) {
             case TypeParam.diagnosticTest:
-                dispatch(tryAgainDiagnosticThunk({ testId: id }));
+                dispatch(startTryAgainDiagnostic());
+                dispatch(initDiagnosticTestQuestionThunk());
                 _href = RouterApp.Diagnostic_test;
                 break;
 
@@ -75,8 +81,17 @@ const HeaderResultTest: React.FC<{
                 break;
 
             case TypeParam.practiceTest:
-                dispatch(tryAgainPracticesThunk({ testId: id }));
-                _href = `/study/${TypeParam.practiceTest}?type=test&testId=${id}`;
+                dispatch(initPracticeThunk({ testId: id }));
+                _href = `/study/${TypeParam.practiceTest}?type=practiceTests&testId=${id}`;
+                break;
+
+            case TypeParam.customTest:
+                await dispatch(
+                    initCustomTestThunk({
+                        testId: id,
+                    })
+                );
+                _href = `${RouterApp.Custom_test}?testId=${id}`;
                 break;
 
             case TypeParam.review:
@@ -88,9 +103,9 @@ const HeaderResultTest: React.FC<{
         }
 
         if (_href) {
-            router.push(_href);
+            router.replace(_href);
         }
-    }, [router, idTopic, dispatch, type, testId]);
+    }, [router, dispatch, type, testId]);
 
     const handleNextTets = useCallback(async () => {
         if (type === TypeParam.practiceTest) {
@@ -100,13 +115,15 @@ const HeaderResultTest: React.FC<{
                 .filter((item) => item.status === 0)
                 .first();
 
-            dispatch(initPracticeThunk({}));
-            const _href = `/study/${TypeParam.practiceTest}?type=test&testId=${currentTest?.parentId}`;
-            return router.replace(_href);
+            dispatch(initPracticeThunk({ testId: currentTest?.id || -1 }));
+            const _href = `/study/${TypeParam.practiceTest}?type=practiceTests&testId=${currentTest?.id}`;
+            router.push(_href);
+            return;
         }
         if (type === TypeParam.customTest) {
-            dispatch(initCustomTestThunk());
-            return router.push(RouterApp.Custom_test);
+            dispatch(resetState());
+            router.push(`${RouterApp.Custom_test}?isCreate=true`);
+            return;
         }
     }, [router, type, dispatch]);
 
@@ -116,20 +133,20 @@ const HeaderResultTest: React.FC<{
             handleNavigateStudy({
                 dispatch,
                 router,
-                appShortName: appInfo.appShortName,
                 topic: listTopic[0],
                 isReplace: true,
             });
         }
-    }, [dispatch, router, appInfo.appShortName]);
+    }, [dispatch, router]);
 
-    const back = useCallback(() => router.back(), [router]);
+    const back = useCallback(() => router.push(RouterApp.Home), [router]);
 
     if (type === TypeParam.diagnosticTest) {
         return (
             <HeaderResultDiagnostic
                 handleStartLearning={handleStartLearning}
                 handleTryAgain={handleTryAgain}
+                handleBack={back}
                 percentage={(correct / total) * 100}
             />
         );
@@ -170,7 +187,9 @@ const HeaderResultTest: React.FC<{
                                 size="large"
                                 onClick={handleNextTets}
                             >
-                                Next Test
+                                {type === TypeParam.customTest
+                                    ? "New Test"
+                                    : "Continue"}
                             </MtUiButton>
                         )}
                     </div>

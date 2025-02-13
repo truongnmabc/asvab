@@ -1,10 +1,12 @@
 "use client";
 import { MtUiButton } from "@/components/button";
+import RouterApp from "@/constants/router.constant";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { IGameMode } from "@/models/tests";
 import { endTest } from "@/redux/features/game";
 import {
-    selectListQuestion,
     selectCurrentTopicId,
+    selectListQuestion,
 } from "@/redux/features/game.reselect";
 import { shouldOpenSubmitTest, testState } from "@/redux/features/tests";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -12,7 +14,6 @@ import finishCustomTestThunk from "@/redux/repository/game/finish/finishCustomTe
 import finishDiagnosticThunk from "@/redux/repository/game/finish/finishDiagnostic";
 import finishFinalThunk from "@/redux/repository/game/finish/finishFinal";
 import finishPracticeThunk from "@/redux/repository/game/finish/finishPracticeTest";
-import RouterApp from "@/constants/router.constant";
 import { Dialog } from "@mui/material";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -40,7 +41,7 @@ const BottomConfirmTest = () => {
     const pathname = usePathname();
     const listQuestions = useAppSelector(selectListQuestion);
     const router = useRouter();
-    const type = useSearchParams()?.get("type");
+    const type = useSearchParams()?.get("type") as IGameMode;
     const testId = useSearchParams()?.get("testId");
     const id = useAppSelector(selectCurrentTopicId);
     const [info, setInfo] = useState({
@@ -70,7 +71,7 @@ const BottomConfirmTest = () => {
 
         if (testType) {
             dispatch(actionMap[testType]());
-        } else if (type === "test") {
+        } else if (type === "practiceTests") {
             dispatch(finishPracticeThunk());
         }
 

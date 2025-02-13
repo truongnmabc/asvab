@@ -1,12 +1,8 @@
 "use client";
-import Config from "@/config";
-import { getSession } from "@/utils/session";
-import React from "react";
 
 const BtnTets = ({ correct }: { correct: boolean }) => {
-    const isTest = getSession(Config.TESTER_KEY);
-
-    if (isTest && correct)
+    const isTester = sessionStorage.getItem("isTester");
+    if (isTester && correct)
         return (
             <div>
                 <span>★</span>

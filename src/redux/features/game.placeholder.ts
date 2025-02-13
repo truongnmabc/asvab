@@ -1,15 +1,29 @@
-import { IStatusAnswer } from "@/components/statusAnswer";
-import { IGameReducer } from "@/models/game/game";
-import UserQuestionProgress from "@/models/progress/userQuestionProgress";
+import { ICurrentGame, IGameReducer } from "@/models/game/game";
+import { IStatusAnswer } from "@/models/question/questions";
 
-const init = new UserQuestionProgress();
-
-export const plateHolderCurrentGame = {
-    ...init,
+export const plateHolderCurrentGame: ICurrentGame = {
     localStatus: "new" as IStatusAnswer,
     selectedAnswer: null,
     text: "",
     turn: 1,
+    answers: [],
+    explanation: "",
+    id: -1,
+    level: 50,
+    topicId: -1,
+    parentId: -1,
+    status: 0,
+    syncStatus: 0,
+    image: "",
+    partId: -1,
+    contentType: 0,
+    icon: "",
+    paragraphId: -1,
+    subTopicId: -1,
+    subTopicTag: "",
+    tag: "",
+    count: 1,
+    feedBack: "exam",
 };
 
 export const initGameReducer: IGameReducer = {
@@ -32,4 +46,6 @@ export const initGameReducer: IGameReducer = {
     gameDifficultyLevel: "newbie", // Cấp độ bài test (newbie, expert, ...)
     enableKeyboardShortcuts: true, // Có kích hoạt phím tắt không?
     isDataLoaded: false, // Xác định xem đã load data xong chưa
+    hasRetakenDiagnosticTest: false, // Xác định rằng đã làm qua 1 lần diagnostic test, nhưng lần sau là làm lại
+    shouldLoading: false,
 };

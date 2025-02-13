@@ -1,71 +1,14 @@
-// import { ICurrentGame } from "@/models/game/game";
-// import { RootState } from "@/redux/store";
-
-// interface IProgressData extends Omit<ICurrentGame, "parentId"> {
-//     dummyField?: string;
-// }
-
-// export const handleInitTestQuestion = (
-//     state: RootState["gameReducer"],
-//     payload: {
-//         progressData: IProgressData[];
-//         questions: ICurrentGame[];
-//         gameMode: "test" | "learn";
-//         idTopic: number;
-//         duration: number;
-//         isPaused: boolean;
-//         remainTime: number;
-//     }
-// ) => {
-//     const {
-//         progressData,
-//         questions,
-//         gameMode,
-//         idTopic,
-//         duration,
-//         isPaused,
-//         remainTime,
-//     } = payload;
-
-//     state.time = duration;
-//     state.gameMode = gameMode;
-//     state.idTopic = idTopic ?? -1;
-//     state.listQuestion = questions;
-//     state.isFirst = true;
-//     state.isPaused = isPaused;
-//     state.remainTime = remainTime;
-//     if (!progressData || progressData.length === 0) {
-//         state.indexCurrentQuestion = 0;
-//         state.currentGame = questions[0];
-//     } else {
-//         const firstUnansweredIndex = questions.findIndex(
-//             (question) =>
-//                 !progressData.some((answer) => answer?.id === question?.id)
-//         );
-//         state.indexCurrentQuestion =
-//             firstUnansweredIndex > 0 ? firstUnansweredIndex : 0;
-
-//         state.currentGame = {
-//             ...questions[firstUnansweredIndex],
-//             localStatus: "new",
-//             selectedAnswer: null,
-//         };
-//     }
-// };
-
-import { ICurrentGame } from "@/models/game/game";
+import { IUserQuestionProgress } from "@/models/progress/userQuestionProgress";
+import { IQuestionOpt } from "@/models/question";
+import { IGameMode } from "@/models/tests";
 import { RootState } from "@/redux/store";
-
-interface IProgressData extends Omit<ICurrentGame, "parentId"> {
-    dummyField?: string;
-}
 
 export const handleInitTestQuestion = (
     state: RootState["gameReducer"],
     payload: {
-        progressData: IProgressData[];
-        questions: ICurrentGame[];
-        gameMode: "test" | "learn";
+        progressData: IUserQuestionProgress[];
+        questions: IQuestionOpt[];
+        gameMode: IGameMode;
         currentTopicId: number;
         totalDuration: number;
         isGamePaused: boolean;

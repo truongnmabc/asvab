@@ -1,4 +1,4 @@
-import { IAnswer } from "@/models/question/questions";
+import { IAnswer } from "@/models/question";
 
 export const MOCK_TEMP_LIST_ANSWER: IAnswer[] = [
     {
@@ -7,6 +7,9 @@ export const MOCK_TEMP_LIST_ANSWER: IAnswer[] = [
         index: 0,
         correct: false,
         explanation: "",
+        type: "learn",
+        parentId: -1,
+        turn: 1,
     },
     {
         id: -2,
@@ -14,6 +17,9 @@ export const MOCK_TEMP_LIST_ANSWER: IAnswer[] = [
         index: 0,
         correct: false,
         explanation: "",
+        type: "learn",
+        parentId: -1,
+        turn: 1,
     },
     {
         id: -3,
@@ -21,6 +27,9 @@ export const MOCK_TEMP_LIST_ANSWER: IAnswer[] = [
         index: 0,
         correct: false,
         explanation: "",
+        type: "learn",
+        parentId: -1,
+        turn: 1,
     },
     {
         id: -4,
@@ -28,5 +37,8 @@ export const MOCK_TEMP_LIST_ANSWER: IAnswer[] = [
         index: 0,
         correct: false,
         explanation: "",
+        type: "learn",
+        parentId: -1,
+        turn: 1,
     },
 ];

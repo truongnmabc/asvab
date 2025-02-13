@@ -1,295 +1,415 @@
+import CloseIcon from "@/asset/icon/CloseIcon";
+import { MtUiButton } from "@/components/button";
+import DialogResponsive from "@/components/dialogResponsive";
 import { db } from "@/db/db.model";
-import { useIsMobile } from "@/hooks/useIsMobile";
-import { ICurrentGame } from "@/models/game/game";
-import { IQuestion } from "@/models/question/questions";
-import { ITestQuestion } from "@/models/tests/testQuestions";
-import { ITopic } from "@/models/topics/topics";
-import { startCustomTest } from "@/redux/features/game";
-import { useAppDispatch } from "@/redux/hooks";
-import { generateRandomNegativeId } from "@/utils/math";
-import Dialog from "@mui/material/Dialog";
-import React, { useEffect, useState } from "react";
-import ContentSetting from "./contentSetting";
-import dynamic from "next/dynamic";
-const Sheet = dynamic(() => import("@/components/sheet"), {
-    ssr: false,
-});
+import { IGameMode, ITestBase } from "@/models/tests";
+import { IGroupExam } from "@/models/tests/tests";
+import { ITopicBase } from "@/models/topics/topicsProgress";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { yupResolver } from "@hookform/resolvers/yup";
+import React, { useCallback, useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import * as yup from "yup";
+import { CardFeeBack } from "./cardFeedBack";
+import CardProgress from "./cardProgress";
+import CardTopic from "./cardTopic";
+import {
+    fetchQuestionsForTopics,
+    generateRandomNegativeId,
+} from "@/utils/math";
+import { generateGroupExamData } from "@/redux/repository/game/initData/initDiagnosticTest";
+import { shouldLoading, startCustomTest } from "@/redux/features/game";
+import {
+    selectCurrentSubTopicIndex,
+    selectCurrentTopicId,
+} from "@/redux/features/game.reselect";
+import {
+    getLocalUserProgress,
+    mapQuestionsWithProgress,
+} from "@/redux/repository/game/initData/initPracticeTest";
+import { IQuestionOpt } from "@/models/question";
+
 export type IFeedBack = "newbie" | "expert" | "exam";
 
-type IProps = {
+type IPropsUpdateDb = {
+    totalDuration: number;
+    passingThreshold: number;
+    id: number;
+    selectFeedback: IFeedBack;
+    topicIds: number[];
+    totalQuestion: number;
+    groupExamData: IGroupExam[];
+};
+
+const handleSaveToDb = async (props: IPropsUpdateDb, isUpdate: boolean) => {
+    let existingData = null;
+
+    // Nếu là update, lấy dữ liệu cũ để giữ nguyên createData
+    if (isUpdate) {
+        existingData = await db?.testQuestions.get(props.id);
+    }
+
+    const data = {
+        totalDuration: props.totalDuration,
+        passingThreshold: props.passingThreshold,
+        isGamePaused: false,
+        id: props.id,
+        startTime: isUpdate
+            ? Date.now()
+            : existingData?.startTime || Date.now(),
+        gameMode: "customTets" as IGameMode,
+        gameDifficultyLevel: props.selectFeedback,
+        topicIds: props.topicIds,
+        status: 0,
+        attemptNumber: existingData?.attemptNumber ?? 1,
+        elapsedTime: existingData?.elapsedTime ?? 0,
+        totalQuestion: props.totalQuestion,
+        groupExamData: props.groupExamData,
+        createDate: isUpdate ? existingData?.createDate : Date.now(), // Giữ nguyên createData khi update
+    };
+
+    if (isUpdate) {
+        await db?.testQuestions.update(data.id, { ...data });
+    } else {
+        await db?.testQuestions.add(data);
+    }
+};
+
+const schema = yup.object().shape({
+    selectFeedback: yup.string().oneOf(["newbie", "expert", "exam"]).required(),
+    count: yup.number().min(1, "Must be at least 1").max(100).required(),
+    duration: yup.number().min(0).max(90).required(),
+    passing: yup.number().min(0).max(100).required(),
+    selectListTopic: yup.array().min(1, "Select at least one topic").required(),
+});
+
+type IFormState = {
+    selectFeedback: IFeedBack;
+    count: number;
+    duration: number;
+    passing: number;
+    selectListTopic: ITopicBase[];
+};
+const ModalSettingCustomTest: React.FC<{
     open: boolean;
     onClose: () => void;
-    item?: ITestQuestion | null;
+    item?: ITestBase | null;
     isShowBtnCancel: boolean;
-    listTestLength: number;
-};
-const ModalSettingCustomTest: React.FC<IProps> = ({
-    open,
-    onClose,
-    item,
-    isShowBtnCancel,
-    listTestLength,
-}) => {
-    const [listTopic, setListTopic] = useState<ITopic[]>([]);
-    const [count, setCount] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [passing, setPassing] = useState(0);
-    const isMobile = useIsMobile();
-    const [selectFeedback, setSelectFeedback] = useState<IFeedBack>("newbie");
-    const [selectListTopic, setSelectListTopic] = useState<ITopic[]>([]);
+    indexSubTopic: number;
+}> = ({ open, onClose, item, isShowBtnCancel, indexSubTopic }) => {
+    const [listTopic, setListTopic] = useState<ITopicBase[]>([]);
+    const isUpdate = !!item;
+    const dispatch = useAppDispatch();
+    const [loading, setLoading] = useState(false);
+    const currentId = useAppSelector(selectCurrentTopicId);
+    const currentIndex = useAppSelector(selectCurrentSubTopicIndex);
+
+    const isDisabled = currentId === item?.id;
+
+    const {
+        handleSubmit,
+        control,
+        watch,
+        setValue,
+        formState: { errors },
+    } = useForm<IFormState>({
+        resolver: yupResolver(schema),
+        defaultValues: {
+            selectFeedback: item?.gameDifficultyLevel ?? "newbie",
+            count: item?.totalQuestion ?? 34,
+            duration: item?.totalDuration ?? 30,
+            passing: item?.passingThreshold ?? 70,
+            selectListTopic: listTopic,
+        },
+    });
+    const selectListTopic = watch("selectListTopic");
 
     useEffect(() => {
-        const handleGetData = async () => {
+        const fetchData = async () => {
             const data = await db?.topics.toArray();
             if (data) {
                 setListTopic(data);
+                if (!item) {
+                    setValue("selectListTopic", data);
+                }
             }
         };
-        handleGetData();
-    }, []);
+        fetchData();
+    }, [setValue, item]);
 
     useEffect(() => {
-        if (item) {
-            setCount(item.count || 0);
-            setDuration(item.totalDuration);
-            setPassing(item.passingThreshold ?? 0);
-            setSelectFeedback(item.gameDifficultyLevel ?? "newbie");
-            setSelectListTopic(
-                item.subject
-                    ? item.subject.map(
-                          (id): ITopic => ({
-                              id,
-                              parentId: -1,
-                              name: "Default Topic Name",
-                              icon: "default-icon",
-                              tag: "default-tag",
-                              type: 0,
-                              contentType: 0,
-                              orderIndex: 0,
-                              topics: [],
-                          })
-                      )
-                    : []
+        if (item && listTopic.length > 0) {
+            setValue(
+                "selectListTopic",
+                listTopic.filter((topic) =>
+                    item.topicIds?.includes(topic.id)
+                ) || []
             );
         }
-    }, [item]);
+    }, [item, listTopic, setValue]);
 
-    const resetState = () => {
-        setCount(0);
-        setDuration(0);
-        setPassing(0);
-        setSelectFeedback("newbie");
-        setSelectListTopic([]);
-    };
-    const onCancel = () => {
-        resetState();
-        onClose();
-    };
-    const [loading, setLoading] = useState(false);
-    const dispatch = useAppDispatch();
-    const onStart = async () => {
-        if (count > 0 && selectListTopic.length > 0) {
-            let listQuestion: ICurrentGame[] = [];
-            try {
-                setLoading(true);
+    const onSubmit = async (data: IFormState) => {
+        try {
+            setLoading(true);
 
-                const countQuestionTopic = Math.floor(
-                    count / selectListTopic.length
+            const countQuestionTopic = Math.floor(
+                data.count / data.selectListTopic.length
+            );
+
+            const remainderQuestionTopic =
+                data.count % data.selectListTopic.length;
+
+            const listQuestion = await fetchQuestionsForTopics(
+                data.selectListTopic,
+                countQuestionTopic,
+                remainderQuestionTopic
+            );
+
+            const id = isUpdate ? item!.id : generateRandomNegativeId();
+            const groupExamData = await generateGroupExamData({
+                questions: listQuestion,
+                topics: data.selectListTopic,
+            });
+
+            await handleSaveToDb(
+                {
+                    id,
+                    passingThreshold: data.passing,
+                    topicIds: data.selectListTopic.map((t) => t.id),
+                    selectFeedback: data.selectFeedback,
+                    totalDuration: data.duration,
+                    totalQuestion: data.count,
+                    groupExamData,
+                },
+                isUpdate
+            );
+            if (!isUpdate || isDisabled) {
+                const listIds =
+                    item?.groupExamData.flatMap((i) => i.questionIds) || [];
+                const progressData = await getLocalUserProgress(
+                    listIds,
+                    "customTets",
+                    item?.attemptNumber || 1
                 );
-                const remainderQuestionTopic = count % selectListTopic.length;
-
-                for (const [topicIndex, topic] of selectListTopic.entries()) {
-                    const listPart = topic?.topics?.flatMap(
-                        (item) => item.topics
-                    );
-                    if (listPart) {
-                        const countQuestionPart = Math.floor(
-                            countQuestionTopic / listPart.length
-                        );
-                        const remainderQuestionPart =
-                            countQuestionTopic % listPart.length;
-
-                        for (const [partIndex, part] of listPart.entries()) {
-                            if (part?.id) {
-                                const topicData = await db?.topicQuestion
-                                    ?.where("id")
-                                    .equals(part.id)
-                                    .first();
-
-                                if (topicData?.questions) {
-                                    const questionCount =
-                                        partIndex === listPart.length - 1
-                                            ? countQuestionPart +
-                                              remainderQuestionPart
-                                            : countQuestionPart;
-
-                                    const randomQuestions = topicData.questions
-                                        .sort(() => Math.random() - 0.5)
-                                        .slice(0, questionCount)
-                                        .map((item) => ({
-                                            ...item,
-                                            tag: topic.tag,
-                                            icon: topic.icon,
-                                            parentId: topic.id,
-                                        }));
-
-                                    listQuestion = [
-                                        ...listQuestion,
-                                        ...randomQuestions,
-                                    ];
-                                }
-                            }
-                        }
-
-                        if (
-                            topicIndex === selectListTopic.length - 1 &&
-                            remainderQuestionTopic > 0
-                        ) {
-                            const id = listPart[listPart.length - 1]?.id;
-                            if (id) {
-                                const extraQuestions = await db?.topicQuestion
-                                    ?.where("id")
-                                    .equals(id)
-                                    .first();
-
-                                if (extraQuestions?.questions) {
-                                    const extraRandomQuestions =
-                                        extraQuestions.questions
-
-                                            .sort(() => Math.random() - 0.5)
-                                            .slice(0, remainderQuestionTopic)
-                                            .map((item) => ({
-                                                ...item,
-                                                tag: topic.tag,
-                                                icon: topic.icon,
-                                                parentId: topic.id,
-                                            }));
-
-                                    listQuestion = [
-                                        ...listQuestion,
-                                        ...extraRandomQuestions,
-                                    ];
-                                }
-                            }
-                        }
-                    }
-                }
-                const parentId = generateRandomNegativeId();
-
-                await db?.testQuestions.add({
-                    totalDuration: duration,
-                    passingThreshold: passing,
-                    isGamePaused: false,
-                    parentId: parentId,
-                    question: listQuestion as IQuestion[],
-                    remainingTime: duration * 60,
-                    startTime: new Date().getTime(),
-                    gameMode: "customTets",
-                    count: count,
-                    gameDifficultyLevel: selectFeedback,
-                    subject: selectListTopic?.map((item) => item.id),
-                    status: 0,
-                    attemptNumber: 1,
-                    elapsedTime: 0,
-                });
+                const questions = mapQuestionsWithProgress(
+                    listQuestion || [],
+                    progressData
+                ) as IQuestionOpt[];
 
                 dispatch(
                     startCustomTest({
-                        listQuestion,
-                        remainingTime: duration * 60,
-                        parentId: parentId,
-                        passingThreshold: passing,
-                        gameDifficultyLevel: selectFeedback,
-                        currentSubTopicIndex: listTestLength + 1,
+                        listQuestion: questions,
+                        remainingTime: data.duration * 60,
+                        parentId: id,
+                        passingThreshold: data.passing,
+                        gameDifficultyLevel: data.selectFeedback,
+                        currentSubTopicIndex: isUpdate
+                            ? currentIndex
+                            : indexSubTopic,
                     })
                 );
-                onCancel();
-            } catch (err) {
-                console.error("Error while fetching questions:", err);
-            } finally {
-                setLoading(false);
-                console.log("End time:", new Date().toISOString());
             }
-        } else {
-            alert(
-                "Please ensure that duration > 0, question count > 0, and at least one topic is selected."
-            );
+            dispatch(shouldLoading());
+            onClose();
+        } catch (err) {
+            console.error("Error fetching questions:", err);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleSelectAll = () => {
-        if (selectListTopic.length < listTopic.length)
-            setSelectListTopic(listTopic);
-        if (selectListTopic.length === listTopic.length) setSelectListTopic([]);
-    };
-    if (isMobile) {
-        return (
-            <Sheet
-                visible={open}
-                height={600}
-                mask
-                handler
-                // autoHeight
-                swipeToClose={false}
-                // snapPoints={[100]}
-                // defaultSnapPoint={600}
-                className="custom-sheet-handler"
-            >
-                <ContentSetting
-                    count={count}
-                    duration={duration}
-                    handleSelectAll={handleSelectAll}
-                    isShowBtnCancel={isShowBtnCancel}
-                    listTopic={listTopic}
-                    loading={loading}
-                    onCancel={onCancel}
-                    onStart={onStart}
-                    passing={passing}
-                    selectFeedback={selectFeedback}
-                    selectListTopic={selectListTopic}
-                    setCount={setCount}
-                    setDuration={setDuration}
-                    setPassing={setPassing}
-                    setSelectFeedback={setSelectFeedback}
-                    setSelectListTopic={setSelectListTopic}
-                />
-            </Sheet>
+    const handleSelectAll = useCallback(() => {
+        setValue(
+            "selectListTopic",
+            selectListTopic.length === listTopic.length ? [] : listTopic
         );
-    }
+    }, [listTopic, selectListTopic, setValue]);
+
     return (
-        <Dialog
+        <DialogResponsive
             open={open}
-            onClose={() => {
-                if (isShowBtnCancel) onClose();
-            }}
-            sx={{
-                "& .MuiDialog-paper": {
-                    width: "100%",
-                    maxWidth: "900px",
-                    maxHeight: "780px",
-                    height: "100%",
+            close={() => isShowBtnCancel && onClose()}
+            dialogRest={{
+                sx: {
+                    "& .MuiDialog-paper": {
+                        width: "100%",
+                        maxWidth: "900px",
+                        maxHeight: "1080px",
+                    },
                 },
             }}
+            sheetRest={{
+                mask: true,
+                height: 600,
+                handler: true,
+                swipeToClose: false,
+                className: "custom-sheet-handler",
+            }}
         >
-            <ContentSetting
-                count={count}
-                duration={duration}
-                handleSelectAll={handleSelectAll}
-                isShowBtnCancel={isShowBtnCancel}
-                listTopic={listTopic}
-                loading={loading}
-                onCancel={onCancel}
-                onStart={onStart}
-                passing={passing}
-                selectFeedback={selectFeedback}
-                selectListTopic={selectListTopic}
-                setCount={setCount}
-                setDuration={setDuration}
-                setPassing={setPassing}
-                setSelectFeedback={setSelectFeedback}
-                setSelectListTopic={setSelectListTopic}
-            />
-        </Dialog>
+            <form
+                onSubmit={handleSubmit(onSubmit)}
+                className="w-full flex flex-col transition-all justify-between max-w-[900px]  h-full p-4 sm:p-6 bg-theme-white"
+            >
+                <div className="flex-1 overflow-y-auto scrollbar-none">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <p className="text-2xl text-center w-full sm:text-start font-semibold">
+                            Customize Your Test
+                        </p>
+                        {isShowBtnCancel && (
+                            <button
+                                aria-label="Close"
+                                onClick={onClose}
+                                type="button"
+                                className="w-8 h-8 cursor-pointer rounded-full bg-white flex items-center justify-center"
+                            >
+                                <CloseIcon />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Feedback Modes */}
+                    <section className="mt-6">
+                        <p className="text-lg font-semibold">Feedback Modes</p>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {["newbie", "expert", "exam"].map((type) => (
+                                <Controller
+                                    key={type}
+                                    name="selectFeedback"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <CardFeeBack
+                                            text={`${
+                                                type.charAt(0).toUpperCase() +
+                                                type.slice(1)
+                                            } Mode`}
+                                            type={type as IFeedBack}
+                                            select={field.value}
+                                            onSelect={field.onChange}
+                                            des={
+                                                type === "newbie"
+                                                    ? "Answers and explanations are displayed immediately after each question."
+                                                    : type === "expert"
+                                                    ? "Only answer accuracy is evaluated after each question. No explanation provided."
+                                                    : "The final score is shown after answering all questions."
+                                            }
+                                        />
+                                    )}
+                                />
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Test Settings */}
+                    <section className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Controller
+                            name="count"
+                            control={control}
+                            render={({ field }) => (
+                                <CardProgress
+                                    title="Question Count:*"
+                                    max={100}
+                                    defaultValue={field.value}
+                                    changeProgress={field.onChange}
+                                    required
+                                    errorMess={errors.count?.message}
+                                    disabled={isDisabled}
+                                />
+                            )}
+                        />
+                        <Controller
+                            name="duration"
+                            control={control}
+                            render={({ field }) => (
+                                <CardProgress
+                                    title="Duration:"
+                                    suffix="minutes"
+                                    max={90}
+                                    defaultValue={field.value}
+                                    disabled={isDisabled}
+                                    changeProgress={field.onChange}
+                                />
+                            )}
+                        />
+                        <Controller
+                            name="passing"
+                            control={control}
+                            render={({ field }) => (
+                                <CardProgress
+                                    title="Passing Score:"
+                                    suffix="%"
+                                    max={100}
+                                    defaultValue={field.value}
+                                    disabled={isDisabled}
+                                    changeProgress={field.onChange}
+                                />
+                            )}
+                        />
+                    </section>
+
+                    {/* Topics Selection */}
+                    <section className="mt-6 pb-1">
+                        <div className="flex items-center gap-3">
+                            <p className="text-lg font-semibold">Subjects*</p>
+                            <button
+                                aria-label="Select All Topics"
+                                type="button"
+                                className="underline cursor-pointer text-sm font-normal"
+                                onClick={handleSelectAll}
+                            >
+                                {selectListTopic.length === listTopic.length
+                                    ? "Deselect All"
+                                    : "Select All"}
+                                s
+                            </button>
+                        </div>
+                        <div className="grid mt-4 gap-4 grid-cols-1 sm:grid-cols-3">
+                            {listTopic.map((item) => (
+                                <CardTopic
+                                    key={item.id}
+                                    item={item}
+                                    disabled={isDisabled}
+                                    selectListTopic={selectListTopic}
+                                    setSelectListTopic={(newList) =>
+                                        setValue("selectListTopic", newList)
+                                    }
+                                />
+                            ))}
+                        </div>
+                        {errors.selectListTopic && (
+                            <p className="text-red-500 mt-2 text-sm">
+                                {errors.selectListTopic.message}
+                            </p>
+                        )}
+                    </section>
+                </div>
+
+                <div className="flex pb-6 sm:pb-0 w-full mt-2 items-center justify-end gap-4">
+                    {isShowBtnCancel && (
+                        <MtUiButton
+                            className="sm:max-w-32"
+                            block
+                            size="large"
+                            onClick={onClose}
+                            htmlType="button"
+                        >
+                            Cancel
+                        </MtUiButton>
+                    )}
+
+                    <MtUiButton
+                        size="large"
+                        type="primary"
+                        block
+                        htmlType="submit"
+                        className="sm:max-w-32"
+                        loading={loading}
+                    >
+                        {isUpdate ? "Update" : "Start"}
+                    </MtUiButton>
+                </div>
+            </form>
+        </DialogResponsive>
     );
 };
 

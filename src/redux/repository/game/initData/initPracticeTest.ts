@@ -4,51 +4,60 @@ import axiosInstance from "@/config/axios";
 import { API_PATH } from "@/constants/api.constants";
 import { db } from "@/db/db.model";
 import { IUserQuestionProgress } from "@/models/progress/userQuestionProgress";
-import { IQuestion } from "@/models/question/questions";
+import { IQuestionOpt } from "@/models/question";
+import { IGameMode } from "@/models/tests";
+import { RootState } from "@/redux/store";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { ICurrentGame } from "@/models/game/game";
 
 type IInitQuestion = {
-    testId?: number | null;
+    testId: number;
 };
 
 /**
  * Lưu trữ dữ liệu bài kiểm tra vào IndexedDB.
  *
  * @param {number} parentId - ID bài kiểm tra.
- * @param {IQuestion[]} question - Danh sách câu hỏi.
+ * @param {IQuestionOpt[]} question - Danh sách câu hỏi.
  * @param {number} duration - Tổng thời gian làm bài.
  * @param {number} remainingTime - Thời gian còn lại.
  */
 const setDataStore = async (
     parentId: number,
-    question: IQuestion[],
-    totalDuration: number,
-    remainingTime: number
+    question: IQuestionOpt[],
+    totalDuration: number
 ) => {
     await db?.testQuestions.add({
-        parentId,
-        question,
+        id: parentId,
         totalDuration,
         isGamePaused: false,
         startTime: new Date().getTime(),
-        remainingTime: remainingTime,
         gameMode: "practiceTests",
         elapsedTime: 0,
         status: 0,
         attemptNumber: 1,
+        groupExamData: [],
+        passingThreshold: 0,
+        topicIds: [],
+        totalQuestion: question.length,
     });
 };
 
+const updateStartTime = async (id: number) => {
+    const currentTime = Date.now();
+
+    await db?.testQuestions.update(id, {
+        startTime: currentTime,
+    });
+};
 /**
  * Lấy danh sách câu hỏi từ API dựa trên Test ID.
  *
  * @param {string | number} testId - ID của bài test cần lấy câu hỏi.
- * @return {Promise<IQuestion[]>} - Danh sách câu hỏi từ API.
+ * @return {Promise<IQuestionOpt[]>} - Danh sách câu hỏi từ API.
  */
 export const fetchQuestions = async (
     testId: string | number
-): Promise<IQuestion[]> => {
+): Promise<IQuestionOpt[]> => {
     const response = await axiosInstance.get(
         `${API_PATH.GET_QUESTION_BY_ID}/${testId}`
     );
@@ -58,45 +67,57 @@ export const fetchQuestions = async (
 /**
  * Lấy tiến trình người dùng từ local database (IndexedDB).
  *
- * @param {number} parentId - ID của bài test.
- * @param {"test"} gameMode - Loại tiến trình ("test").
+ * @param {number} listIds - ID của bài test.
+ * @param {"practiceTests" | "learn"} gameMode - Loại tiến trình ("test").
  * @param {number} turn - Số lần thực hiện bài test.
  * @return {Promise<IUserQuestionProgress[] | null>} - Danh sách tiến trình người dùng hoặc null nếu không có.
  */
 export const getLocalUserProgress = async (
-    parentId: number,
-    gameMode: "test",
+    listIds: number[],
+    gameMode: IGameMode,
     turn: number
-): Promise<IUserQuestionProgress[] | null> => {
-    return (
-        db?.userProgress
-            .filter((item) =>
-                item.gameMode === gameMode &&
-                item.selectedAnswers?.filter((i) => i.turn === turn).length
-                    ? true
-                    : false && item.parentIds.includes(parentId)
+) => {
+    // Lấy toàn bộ dữ liệu từ IndexedDB
+    const userProgress = await db?.userProgress
+        .where("id")
+        .anyOf(listIds)
+        .toArray();
+
+    if (!userProgress) return [];
+
+    // Lọc selectedAnswers sau khi lấy dữ liệu
+    return userProgress
+        .filter((progress) =>
+            progress.selectedAnswers.some(
+                (answer) => answer.turn === turn && answer.type === gameMode
             )
-            .toArray() ?? null
-    );
+        )
+        .map((progress) => ({
+            ...progress,
+            selectedAnswers: progress.selectedAnswers.filter(
+                (answer) => answer.turn === turn && answer.type === gameMode
+            ),
+        }));
 };
 
 /**
- * Kết hợp dữ liệu câu hỏi với tiến trình người dùng.
+ * Kết hợp dữ liệu câu hỏi với tiến trình người dùng và sắp xếp lại danh sách.
  *
- * @param {ICurrentGame[]} questions - Danh sách câu hỏi.
+ * @param {IQuestionOpt[]} questions - Danh sách câu hỏi.
  * @param {IUserQuestionProgress[]} progressData - Dữ liệu tiến trình người dùng.
  * @return {ICurrentGame[]} - Danh sách câu hỏi đã được cập nhật trạng thái từ tiến trình.
  */
 export const mapQuestionsWithProgress = (
-    questions: ICurrentGame[],
+    questions: IQuestionOpt[],
     progressData: IUserQuestionProgress[]
-): ICurrentGame[] => {
-    return questions.map((question) => {
+) => {
+    const mappedQuestions = questions.map((question) => {
         const progress = progressData.find((pro) => question.id === pro.id);
         const selectedAnswers = progress?.selectedAnswers || [];
 
         return {
             ...question,
+
             selectedAnswer:
                 selectedAnswers.length > 0 ? selectedAnswers.at(-1) : null,
             localStatus: progress
@@ -104,8 +125,14 @@ export const mapQuestionsWithProgress = (
                     ? "correct"
                     : "incorrect"
                 : "new",
-        } as ICurrentGame;
+            hasAnswer: selectedAnswers.length > 0, // Thêm thuộc tính để hỗ trợ sắp xếp
+        };
     });
+
+    // Sắp xếp: Câu hỏi đã có câu trả lời lên đầu
+    return mappedQuestions.sort(
+        (a, b) => Number(b.hasAnswer) - Number(a.hasAnswer)
+    );
 };
 
 /**
@@ -116,7 +143,7 @@ export const mapQuestionsWithProgress = (
  *   questions: ICurrentGame[],
  *   progressData: IUserQuestionProgress[],
  *   currentTopicId: number,
- *   gameMode: "test",
+ *   gameMode: "practiceTests",
  *   totalDuration: number,
  *   isGamePaused: boolean,
  *   remainingTime: number
@@ -124,58 +151,64 @@ export const mapQuestionsWithProgress = (
  */
 const initPracticeThunk = createAsyncThunk(
     "initPracticeThunk",
-    async ({ testId }: IInitQuestion) => {
-        let currentTest;
-        let id = testId || 0;
+    async ({ testId }: IInitQuestion, thunkAPI) => {
+        const state = thunkAPI.getState() as RootState;
+        let { isDataFetched } = state.appInfoReducer;
 
-        if (!testId) {
-            const res = await db?.testQuestions
-                .where("gameMode")
-                .equals("practiceTests")
-                .filter((item) => item.status === 0)
-                .first();
-
-            if (res && res.id) {
-                currentTest = res;
-                id = res.id;
-            }
-        } else {
-            currentTest = await db?.testQuestions
-                .where("parentId")
-                .equals(Number(testId))
-                .first();
+        while (!isDataFetched) {
+            await new Promise((resolve) => setTimeout(resolve, 100)); // Đợi 100ms trước khi kiểm tra lại
+            isDataFetched = (thunkAPI.getState() as RootState).appInfoReducer
+                .isDataFetched;
         }
 
-        let listQuestion = currentTest?.question;
-        const totalDuration = currentTest?.totalDuration || 60;
-        const remainingTime =
-            totalDuration * 60 - (currentTest?.elapsedTime || 0);
+        const currentTest = await db?.testQuestions
+            .where("id")
+            .equals(testId)
+            .first();
 
-        if (!listQuestion) {
-            listQuestion = await fetchQuestions(id);
-            await setDataStore(id, listQuestion, totalDuration, remainingTime);
+        let listQuestion: IQuestionOpt[] = [];
+        const totalDuration = currentTest?.totalDuration || 60;
+
+        const listIds =
+            currentTest?.groupExamData?.flatMap((item) => item.questionIds) ||
+            [];
+        if (listIds?.length) {
+            const questionsFromDb = await db?.questions
+                .where("id")
+                .anyOf(listIds)
+                .toArray();
+            if (questionsFromDb) listQuestion = questionsFromDb;
+        }
+
+        if (listQuestion.length === 0) {
+            const result = await fetchQuestions(testId);
+            listQuestion = result as unknown as IQuestionOpt[];
+            await setDataStore(testId, listQuestion, totalDuration);
         }
 
         const progressData = await getLocalUserProgress(
-            id,
-            "test",
+            listIds,
+            "practiceTests",
             currentTest?.attemptNumber || 1
         );
+        const remainingTime =
+            totalDuration * 60 - (currentTest?.elapsedTime || 0);
 
         if (progressData) {
             const questions = mapQuestionsWithProgress(
                 listQuestion,
                 progressData
-            );
-
+            ) as IQuestionOpt[];
+            await updateStartTime(testId);
             return {
                 questions,
                 progressData,
-                currentTopicId: id,
-                gameMode: "test" as const,
+                currentTopicId: testId,
+                gameMode: "practiceTests" as IGameMode,
                 totalDuration,
                 isGamePaused: currentTest?.isGamePaused || false,
                 remainingTime,
+                attemptNumber: currentTest?.attemptNumber,
             };
         }
         return null;

@@ -1,10 +1,10 @@
-import { ITopic } from "@/models/topics/topics";
+import { ITopicBase } from "@/models/topics/topicsProgress";
 import React, { ReactNode } from "react";
 
 export interface IContextAllowExpand {
     color?: string;
-    mainTopic?: ITopic;
-    mainTopicTag: string;
+    mainTopic?: ITopicBase | null;
+    mainTopicTag: string | null;
 }
 
 export const AllowExpandContext = React.createContext<IContextAllowExpand>({
@@ -18,11 +18,11 @@ const AllowExpandProvider = ({
     topic,
 }: {
     children: ReactNode;
-    topic: ITopic;
+    topic: ITopicBase | null;
 }) => {
     const value = {
         mainTopic: topic,
-        mainTopicTag: topic.tag,
+        mainTopicTag: topic ? topic.tag : "",
     };
 
     return (

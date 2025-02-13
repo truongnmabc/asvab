@@ -1,5 +1,6 @@
 "use client";
 import CrownIcon from "@/components/icon/iconCrown";
+import RouterApp from "@/constants/router.constant";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { selectCurrentGame } from "@/redux/features/game.reselect";
 import { selectUserInfo } from "@/redux/features/user.reselect";
@@ -9,6 +10,7 @@ import ctx from "@/utils/mergeClass";
 import { MyCrypto } from "@/utils/myCrypto";
 import { Collapse } from "@mui/material";
 import { MathJax } from "better-react-mathjax";
+import clsx from "clsx";
 import React, { useEffect, useState } from "react";
 
 type IProps = {
@@ -23,13 +25,23 @@ const FN: React.FC<IProps> = ({ unLock = false }) => {
     useEffect(() => {
         if (currentGame?.text && currentGame?.id) {
             try {
-                const content = MyCrypto.decrypt(currentGame?.explanation);
-                setText(content);
+                if (userInfo.isPro || unLock) {
+                    const content = MyCrypto.decrypt(currentGame?.explanation);
+                    setText(content);
+                } else {
+                    setText(currentGame?.explanation);
+                }
             } catch (err) {
                 console.log("🚀 ~ useEffect ~ err:", err);
             }
         }
-    }, [currentGame?.id, currentGame?.text, currentGame?.explanation]);
+    }, [
+        currentGame?.id,
+        currentGame?.text,
+        currentGame?.explanation,
+        userInfo,
+        unLock,
+    ]);
     return (
         <Collapse in={currentGame?.selectedAnswer ? true : false} timeout={200}>
             <div className="flex text-[#004fc2] text-sm sm:text-base gap-2 items-center">
@@ -56,7 +68,7 @@ const FN: React.FC<IProps> = ({ unLock = false }) => {
                             value: {},
                         });
 
-                        window.open("/get-pro", "_blank");
+                        window.open(RouterApp.Get_pro, "_blank");
                     }
                 }}
             >
@@ -71,7 +83,9 @@ const FN: React.FC<IProps> = ({ unLock = false }) => {
                         dangerouslySetInnerHTML={{
                             __html: text,
                         }}
-                        className="text-sm font-normal sm:text-base"
+                        className={clsx("text-sm font-normal sm:text-base", {
+                            " line-clamp-1": !userInfo.isPro && !unLock,
+                        })}
                     />
                 </MathJax>
             </div>
