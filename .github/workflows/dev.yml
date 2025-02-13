@@ -39,7 +39,10 @@ jobs:
           echo "NEXT_PUBLIC_APP_SHORT_NAME=${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}" >> .env
           echo "NEXT_PUBLIC_GOOGLE_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}" >> .env
           echo "NEXT_PUBLIC_GOOGLE_SECRET=${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}" >> .env  
-          
+
+      - name: Debug .env file
+        run: cat .env || echo ".env file not found!"
+
       # ✅ 4️⃣ Build dự án
       - name: Build the project
         run: yarn build
@@ -86,6 +89,8 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
               ENV_CONTENT=${{ secrets.ENV_CONTENT }}
+      - name: Debug .env inside Docker
+        run: docker run --rm ${{ env.IMAGE_URL }} cat /app/.env || echo ".env file not found in container!"
 
       # ✅ 🔟 Deploy lên CapRover
       - name: Deploy Image to CapRover
