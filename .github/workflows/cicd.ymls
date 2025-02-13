@@ -81,6 +81,8 @@ jobs:
                   file: ./Dockerfile
                   push: true
                   tags: ${{ env.IMAGE_URL }}
+                  build-args: |
+                    ENV_CONTENT=${{ secrets.ENV_CONTENT }}
 
             - name: Deploy Image to CapRover
               uses: caprover/deploy-from-github@v1.1.2
