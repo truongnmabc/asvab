@@ -5,6 +5,9 @@ WORKDIR /app/web
 # ✅ 2️⃣ Copy các file đã build từ môi trường bên ngoài
 COPY .env .env
 
+# Debug: Hiển thị nội dung .env để kiểm tra
+RUN echo "✅ Debug: Kiểm tra nội dung .env trong Docker" && cat /app/web/.env
+
 # ✅ 3️⃣ Thiết lập biến môi trường cho production
 ENV NODE_ENV=production
 
