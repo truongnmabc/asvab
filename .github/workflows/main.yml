@@ -35,9 +35,15 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      # ✅ 4️⃣ Tạo file `.env`
       - name: Create .env file
-        run: echo "${{ secrets.ENV_CONTENT }}" > .env
+        run: |
+          echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
+          echo "DEV_BASE_API=${{ secrets.DEV_BASE_API }}" >> .env
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+          echo "NEXT_PUBLIC_APP_SHORT_NAME=${{ secrets.NEXT_PUBLIC_APP_SHORT_NAME }}" >> .env
+          echo "NEXT_PUBLIC_GOOGLE_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ID }}" >> .env
+          echo "NEXT_PUBLIC_GOOGLE_SECRET=${{ secrets.NEXT_PUBLIC_GOOGLE_SECRET }}" >> .env
+
 
       # ✅ 4️⃣ Kiểm tra file .env trước khi build
       - name: Debug .env before Docker build
