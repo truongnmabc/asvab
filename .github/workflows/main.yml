@@ -1,17 +1,20 @@
-name: CI/CD
+name: CI/CD Production
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
-  build_and_deploy:
+  build_and_deploy_prod:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
+      packages: write
+
     strategy:
       matrix:
         node-version: [22.x]
@@ -21,12 +24,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ 2️⃣ Setup Node.js và cache dependencies
+      # ✅ 2️⃣ Setup Node.js
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
 
+      # ✅ 3️⃣ Cài đặt dependencies
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # ✅ 4️⃣ Tạo file `.env`
       - name: Create .env file
-          run: echo "${{ secrets.ENV_CONTENT }}" > .env
+        run: echo "${{ secrets.ENV_CONTENT }}" > .env
+
+      # ✅ 4️⃣ Kiểm tra file .env trước khi build
+      - name: Debug .env before Docker build
+        run: |
+          echo "✅ Debug: Kiểm tra nội dung .env trước khi build Docker"
+          cat .env || echo "⚠️ Không tìm thấy file .env"
+
+      # ✅ 5️⃣ Build và push Docker Image
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/my-app:latest
+          build-args: |
+            ENV_FILE=.env
+
+      # ✅ 6️⃣ Deploy lên Production Server
+      - name: Deploy to Production Server
+        run: echo "Deploying to Production Server..."
