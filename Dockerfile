@@ -3,10 +3,6 @@ FROM node:22-alpine AS runner
 WORKDIR /app/web
 
 # ✅ 2️⃣ Copy các file đã build từ môi trường bên ngoài
-COPY .next .next
-COPY public public
-COPY package.json package.json
-COPY node_modules node_modules
 COPY .env .env
 
 # ✅ 3️⃣ Thiết lập biến môi trường cho production
